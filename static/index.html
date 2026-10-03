@@ -49,6 +49,7 @@
     <div id="filtros-aplicados" class="applied-filters" aria-label="Filtros aplicados"><span class="context-chip">2024</span><span class="context-chip">Todos os meses</span><span class="context-chip unit-chip">Todas as unidades</span></div>
     <p id="recorte" class="scope-description">Carregando a base de 2024…</p>
     <div id="alerta" class="alert" role="status" aria-live="polite" hidden></div>
+    <div id="qualidade-dados" class="alert" role="status" aria-live="polite" hidden></div>
     <div id="erro" class="alert error" role="alert" hidden><span id="erro-texto"></span><button id="tentar" type="button">Tentar novamente</button></div>
     <section id="resultados" aria-busy="true">
       <div class="kpi-grid">
@@ -73,7 +74,7 @@
           <div id="mensal-destaque" class="chart-insight"><span class="insight-label">Maior mês no recorte</span><strong class="insight-value">—</strong><span class="insight-detail">Aguardando consulta</span></div>
           <div id="mensal" class="monthly-chart" aria-label="Pagamentos por mês"></div>
           <p id="mensal-deslize" class="chart-scroll-hint">Deslize o gráfico para ver todos os meses →</p>
-          <div class="chart-legend" aria-label="Legenda do gráfico mensal"><span><i class="legend-swatch" aria-hidden="true"></i>Soma líquida</span><span><i class="legend-swatch peak" aria-hidden="true"></i>Maior mês</span><span><i class="legend-swatch negative" aria-hidden="true"></i>Valores negativos</span><span><i class="legend-swatch missing" aria-hidden="true"></i>Sem registros</span></div>
+          <div class="chart-legend" aria-label="Legenda do gráfico mensal"><span><i class="legend-swatch" aria-hidden="true"></i>Soma líquida</span><span><i class="legend-swatch peak" aria-hidden="true"></i>Maior mês</span><span><i class="legend-swatch negative" aria-hidden="true"></i>Valores negativos</span><span><i class="legend-swatch missing" aria-hidden="true"></i>Sem registros</span><span hidden><i class="legend-swatch unavailable" aria-hidden="true"></i>Valor indisponível</span></div>
           <details class="chart-data"><summary>Ver valores mensais</summary><div class="table-scroll"><table><thead><tr><th scope="col">Mês</th><th scope="col" class="number">Total líquido</th><th scope="col" class="number">Registros</th></tr></thead><tbody id="mensal-tabela"></tbody></table></div></details>
           <a id="exportar-mensal" class="export-link" href="/api/exportar?tipo=mensal">↓ Exportar valores mensais</a>
         </article>

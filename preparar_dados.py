@@ -352,7 +352,7 @@ def main() -> None:
         formula="(p + z^2/(2n) +/- z*sqrt(p*(1-p)/n + z^2/(4*n^2))) / (1 + z^2/n)",
         evento="ValorPago > 0 no registro; zeros e ajustes negativos nao sao pagamentos positivos.",
         populacao_alvo="Somente registros de 2024 com ValorPago valido nos quatro CSVs locais fornecidos pelo professor.",
-        amostragem_original="Recorte fornecido pelo professor, sem amostragem probabilistica estadual documentada; nenhuma inferencia para todo o Espirito Santo.",
+        amostragem_original="Recorte sistematico fornecido pelo professor, conforme o enunciado; nao e amostra aleatoria estadual. O sorteio interno aleatorio e distinto da selecao original dos arquivos; nenhuma inferencia para todo o Espirito Santo.",
         amostragem_interna="Sorteio interno aleatorio a partir da base local, distinto da forma de selecao dos arquivos originais.",
         interpretacao="Exercicio de estimacao da proporcao de registros com ValorPago positivo dentro da base local. A proporcao exata tambem e conhecida; o IC demonstra a estimacao por amostra, nao estima total financeiro nem fraude.",
         fonte_metodo="https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm",

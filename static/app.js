@@ -3,7 +3,8 @@ const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const compact = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat("pt-BR");
-const formatMoney = (cents) => money.format(cents / 100);
+const hasMoney = (cents) => typeof cents === "number" && Number.isFinite(cents);
+const formatMoney = (cents) => hasMoney(cents) ? money.format(cents / 100) : "Não informado";
 const formatDate = (date) => date ? date.split("-").reverse().join("/") : "—";
 const state = { filters: { mes: "", unidade: "" }, page: 1, pages: 1, controller: null, ready: false, failed: false };
 
@@ -55,6 +56,29 @@ function insight(id, label, value, detail) {
   if (!element) return;
   element.replaceChildren(node("span", label, "insight-label"), node("strong", value, "insight-value"), node("span", detail, "insight-detail"));
 }
+function renderDataQuality(data) {
+  const notice = $("qualidade-dados");
+  if (!notice) return;
+  const withoutValue = data.registros_sem_valor || 0;
+  const withoutMonth = data.registros_sem_mes || 0;
+  const withoutDate = data.registros_sem_data || 0;
+  notice.hidden = !withoutValue && !withoutMonth && !withoutDate;
+  if (notice.hidden) { notice.textContent = ""; return; }
+  const messages = ["Recorte com dados incompletos."];
+  if (withoutValue) {
+    messages.push(`${integer.format(withoutValue)} registro(s) sem ValorPago válido.`);
+    messages.push(data.registros_com_valor > 0
+      ? "Os totais somam apenas os valores disponíveis; ausências não foram substituídas por zero."
+      : "Nenhum registro possui ValorPago válido; o total permanece indisponível.");
+  }
+  if (withoutMonth) {
+    messages.push(`${integer.format(withoutMonth)} registro(s) sem mês válido de 2024 não entram na série mensal${withoutDate ? `, incluindo ${integer.format(withoutDate)} sem data válida` : ""}.`);
+    if (data.diferenca_serie_centavos) {
+      messages.push(`A soma mensal dos valores disponíveis é ${formatMoney(data.total_com_mes_centavos)}. A diferença entre o total disponível e a série é ${formatMoney(data.diferenca_serie_centavos)}, referente aos registros sem mês válido.`);
+    }
+  } else if (withoutDate) messages.push(`${integer.format(withoutDate)} registro(s) sem Data do registro. Confira a origem antes de interpretar o período.`);
+  notice.textContent = messages.join(" ");
+}
 function renderSummary(data) {
   $("total").textContent = formatMoney(data.total_centavos);
   $("registros").textContent = integer.format(data.registros);
@@ -72,9 +96,10 @@ function renderSummary(data) {
   $("mensal-descricao").textContent = state.filters.mes
     ? "O filtro de mês também se aplica a este gráfico. Escolha Todos os meses para comparar o ano."
     : "Meses de 2024, conforme a data de referência de cada registro. Meses sem linhas são identificados na tabela.";
+  renderDataQuality(data);
 }
-function emptyChart(element) {
-  element.replaceChildren(node("p", "Não há registros para desenhar este gráfico.", "empty-chart"));
+function emptyChart(element, message = "Não há registros para desenhar este gráfico.") {
+  element.replaceChildren(node("p", message, "empty-chart"));
 }
 function renderRanking(rows) {
   const container = $("ranking");
@@ -83,27 +108,30 @@ function renderRanking(rows) {
     insight("ranking-destaque", "Recorte consultado", "Sem registros", "Escolha outra unidade ou mês.");
     return emptyChart(container);
   }
-  const leader = rows[0];
-  insight("ranking-destaque", state.filters.unidade ? "Total da unidade selecionada" : "Maior total no recorte", formatMoney(leader.total_centavos), leader.nome || "Unidade não informada");
-  const hasNegative = rows.some((row) => row.total_centavos < 0);
-  const max = Math.max(...rows.map((row) => Math.abs(row.total_centavos)), 1);
+  const measured = rows.filter((row) => hasMoney(row.total_centavos));
+  const leader = measured[0];
+  if (leader) insight("ranking-destaque", state.filters.unidade ? (leader.registros_sem_valor ? "Total disponível da unidade" : "Total da unidade selecionada") : "Maior total no recorte", formatMoney(leader.total_centavos), `${leader.nome || "Unidade não informada"}${leader.registros_sem_valor ? ` · ${integer.format(leader.registros_sem_valor)} registro(s) sem ValorPago` : ""}`);
+  else insight("ranking-destaque", "Registros sem valores disponíveis", "Não informado", "As unidades têm registros, mas nenhum ValorPago válido.");
+  const hasNegative = measured.some((row) => row.total_centavos < 0);
+  const max = Math.max(...measured.map((row) => Math.abs(row.total_centavos)), 1);
   rows.forEach((row, index) => {
     const wrapper = node("div", undefined, "ranking-row");
     wrapper.append(node("span", String(index + 1).padStart(2, "0"), "rank-number"));
     const content = node("div", undefined, "rank-content");
     const top = node("div", undefined, "rank-top");
     const name = node("span", row.nome || "Unidade não informada", "rank-name");
-    name.title = `${row.codigo || "Sem código"} · ${row.nome || "Unidade não informada"}`;
+    name.title = `${row.codigo || "Sem código"} · ${row.nome || "Unidade não informada"}${row.registros_sem_valor ? ` · ${integer.format(row.registros_sem_valor)} registro(s) sem ValorPago` : ""}`;
     const value = node("span", formatMoney(row.total_centavos), "rank-value");
     if (row.total_centavos < 0) value.classList.add("negative-value");
     top.append(name, value);
     const track = node("div", undefined, "rank-track");
     track.setAttribute("aria-hidden", "true");
     const fill = node("span", undefined, `rank-fill${row.total_centavos < 0 ? " negative" : ""}`);
-    const width = Math.abs(row.total_centavos) / max * (hasNegative ? 50 : 100);
+    const width = hasMoney(row.total_centavos) ? Math.abs(row.total_centavos) / max * (hasNegative ? 50 : 100) : 0;
     fill.style.width = `${width}%`;
     fill.style.left = `${hasNegative ? row.total_centavos < 0 ? 50 - width : 50 : 0}%`;
     track.append(fill);
+    if (!hasMoney(row.total_centavos)) track.hidden = true;
     if (hasNegative) { const baseline = node("span", undefined, "rank-baseline"); baseline.style.left = "50%"; track.append(baseline); }
     content.append(top, track);
     wrapper.append(content);
@@ -120,14 +148,18 @@ function renderMonthly(rows) {
   const container = $("mensal");
   const table = $("mensal-tabela");
   const peakLegend = document.querySelector(".chart-legend .peak")?.parentElement;
-  if (peakLegend) peakLegend.hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0);
+  if (peakLegend) peakLegend.hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0 && hasMoney(row.total_centavos));
+  const unavailableLegend = document.querySelector(".chart-legend .unavailable")?.parentElement;
+  if (unavailableLegend) unavailableLegend.hidden = !rows.some((row) => row.registros > 0 && !hasMoney(row.total_centavos));
   container.classList.toggle("is-single-month", Boolean(state.filters.mes));
-  if ($("mensal-deslize")) $("mensal-deslize").hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0);
+  if ($("mensal-deslize")) $("mensal-deslize").hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0 && hasMoney(row.total_centavos));
   table.replaceChildren();
   rows.forEach((row) => {
     const tr = node("tr");
-    tr.append(node("td", `${row.nome}${row.registros === 0 ? " · sem registros" : ""}`),
-      node("td", formatMoney(row.total_centavos), "number"), node("td", integer.format(row.registros), "number"));
+    const value = node("td", formatMoney(row.total_centavos), "number");
+    if (row.registros_sem_valor) value.append(node("span", `${integer.format(row.registros_sem_valor)} sem ValorPago válido`, "cell-secondary"));
+    tr.append(node("td", `${row.nome}${row.registros === 0 ? " · sem registros" : ""}`), value,
+      node("td", integer.format(row.registros), "number"));
     table.append(tr);
   });
   container.replaceChildren();
@@ -136,10 +168,15 @@ function renderMonthly(rows) {
     insight("mensal-destaque", "Recorte consultado", "Sem registros", "Nenhum mês tem linhas neste recorte.");
     return emptyChart(container);
   }
-  const peak = observed.reduce((highest, row) => row.total_centavos > highest.total_centavos ? row : highest);
-  insight("mensal-destaque", state.filters.mes ? `Total de ${peak.nome.toLowerCase()}` : `Maior total mensal · ${peak.nome}`, formatMoney(peak.total_centavos), `${integer.format(peak.registros)} registros no mês · soma líquida`);
+  const measured = observed.filter((row) => hasMoney(row.total_centavos));
+  if (!measured.length) {
+    insight("mensal-destaque", "Valores indisponíveis no calendário", "Não informado", "Há registros, mas nenhum mês tem ValorPago válido.");
+    return emptyChart(container, "Há registros neste recorte, mas não há valores disponíveis para desenhar o gráfico mensal.");
+  }
+  const peak = measured.reduce((highest, row) => row.total_centavos > highest.total_centavos ? row : highest);
+  insight("mensal-destaque", state.filters.mes ? `Total de ${peak.nome.toLowerCase()}` : `Maior total mensal · ${peak.nome}`, formatMoney(peak.total_centavos), `${integer.format(peak.registros)} registros no mês · soma líquida${peak.registros_sem_valor ? ` · ${integer.format(peak.registros_sem_valor)} sem ValorPago` : ""}`);
   const width = 620, height = 320, left = 120, right = 20, top = 35, bottom = 272;
-  const values = rows.map((row) => row.total_centavos);
+  const values = rows.filter((row) => hasMoney(row.total_centavos)).map((row) => row.total_centavos);
   let high = Math.max(0, ...values), low = Math.min(0, ...values);
   if (high === 0 && low === 0) high = 100;
   const range = high - low;
@@ -160,16 +197,24 @@ function renderMonthly(rows) {
   const step = (width - left - right) / rows.length;
   rows.forEach((row, index) => {
     const x = left + index * step + step * 0.21;
+    const isPeak = !state.filters.mes && row === peak;
+    const label = `${row.nome}: ${formatMoney(row.total_centavos)} · ${integer.format(row.registros)} registro(s)${row.registros === 0 ? " · sem registros" : ""}${row.registros_sem_valor ? ` · ${integer.format(row.registros_sem_valor)} sem ValorPago válido` : ""}`;
+    const group = svgNode("g", { class: "bar-group", tabindex: "0", role: "img", "aria-label": label });
+    group.append(svgNode("title", {}, label));
+    if (!hasMoney(row.total_centavos)) {
+      group.append(svgNode("line", { x1: x, x2: x + step * 0.58, y1: baseline, y2: baseline, class: "unavailable-marker", stroke: "#718798", "stroke-width": 2, "stroke-dasharray": "3 2" }));
+      group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top, baseline - 8), "text-anchor": "middle", class: "unavailable-label" }, "—"));
+      svg.append(group);
+      svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "#4f6878", "font-size": 16 }, row.nome.slice(0, 3)));
+      return;
+    }
     const y = scale(row.total_centavos);
     const barHeight = Math.abs(y - baseline);
-    const isPeak = !state.filters.mes && row === peak;
-    const label = `${row.nome}: ${formatMoney(row.total_centavos)} · ${integer.format(row.registros)} registro(s)${row.registros === 0 ? " · sem registros" : ""}`;
-    const group = svgNode("g", { class: "bar-group", tabindex: "0", role: "img", "aria-label": label });
     const bar = svgNode("rect", { x, y: row.total_centavos >= 0 ? y : baseline,
       width: step * 0.58, height: Math.max(barHeight, 1), rx: Math.min(3, barHeight / 2),
       class: `month-bar${isPeak ? " is-peak" : ""}${row.total_centavos < 0 ? " is-negative" : ""}${row.registros === 0 ? " is-missing" : ""}`,
       fill: row.total_centavos < 0 ? "#b34740" : row.registros === 0 ? "#d5e1da" : isPeak ? "#087d73" : "#274f60" });
-    group.append(svgNode("title", {}, label), bar);
+    group.append(bar);
     if (isPeak) group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top - 10, y - 10), "text-anchor": "middle", class: `peak-label${row.total_centavos < 0 ? " negative-value" : ""}`, fill: row.total_centavos < 0 ? "#b34740" : "#087E8B", "font-size": 14, "font-weight": 700 }, compact.format(row.total_centavos / 100)));
     svg.append(group);
     svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "#4f6878", "font-size": 16 }, row.nome.slice(0, 3)));
@@ -224,6 +269,7 @@ async function load(page = 1, full = true) {
       $("erro-texto").textContent = error.message || "Não foi possível acessar o servidor local. Confira se a janela da aplicação continua aberta.";
       $("erro").hidden = false;
       $("alerta").hidden = true;
+      if ($("qualidade-dados")) $("qualidade-dados").hidden = true;
       $("resultados").hidden = true;
       $("recorte").textContent = "Consulta não concluída. Tente novamente.";
       consultationStatus("Consulta não concluída", "error");
@@ -246,6 +292,7 @@ async function initialize() {
     state.failed = true;
     $("erro-texto").textContent = error.message || "Não foi possível carregar a base. Confira se a aplicação continua aberta.";
     $("erro").hidden = false; $("resultados").hidden = true;
+    if ($("qualidade-dados")) $("qualidade-dados").hidden = true;
     $("recorte").textContent = "Base indisponível.";
     consultationStatus("Base indisponível", "error");
     busy(false);

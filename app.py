@@ -63,7 +63,9 @@ def csv_safe(value):
     return value
 
 
-def cents_decimal(cents: int) -> str:
+def cents_decimal(cents: int | None) -> str:
+    if cents is None:
+        return ""
     sign = "-" if cents < 0 else ""
     cents = abs(cents)
     return f"{sign}{cents // 100},{cents % 100:02d}"
@@ -148,7 +150,13 @@ class Repository:
         where, params = self.where(filters)
         with self.connect() as connection:
             row = connection.execute(f"""SELECT COUNT(*) AS registros,
-                COALESCE(SUM(valor_centavos), 0) AS total_centavos,
+                CASE WHEN COUNT(*) = 0 THEN 0 ELSE SUM(valor_centavos) END AS total_centavos,
+                COUNT(valor_centavos) AS registros_com_valor,
+                COALESCE(SUM(CASE WHEN valor_centavos IS NULL THEN 1 ELSE 0 END), 0) AS registros_sem_valor,
+                COALESCE(SUM(CASE WHEN data_pagamento IS NULL OR TRIM(data_pagamento) = '' THEN 1 ELSE 0 END), 0) AS registros_sem_data,
+                COALESCE(SUM(CASE WHEN mes IS NULL THEN 1 ELSE 0 END), 0) AS registros_sem_mes,
+                COALESCE(SUM(CASE WHEN mes IS NOT NULL THEN valor_centavos ELSE 0 END), 0) AS total_com_mes_centavos,
+                COALESCE(SUM(CASE WHEN mes IS NULL THEN valor_centavos ELSE 0 END), 0) AS total_sem_mes_centavos,
                 COALESCE(SUM(CASE WHEN valor_centavos < 0 THEN 1 ELSE 0 END), 0) AS ajustes,
                 COALESCE(SUM(CASE WHEN valor_centavos < 0 THEN valor_centavos ELSE 0 END), 0) AS ajustes_centavos,
                 COALESCE(SUM(CASE WHEN valor_centavos = 0 THEN 1 ELSE 0 END), 0) AS zeros,
@@ -156,13 +164,16 @@ class Repository:
                 FROM pagamentos WHERE {where}""", params).fetchone()
             units = connection.execute(f"""SELECT COUNT(*) FROM (SELECT codigo_unidade_gestora, unidade_gestora
                 FROM pagamentos WHERE {where} GROUP BY codigo_unidade_gestora, unidade_gestora)""", params).fetchone()[0]
-        return dict(row) | {"unidades": units, "ano": 2024}
+        return dict(row) | {"unidades": units, "ano": 2024,
+                            "diferenca_serie_centavos": row["total_sem_mes_centavos"]}
 
     def ranking(self, filters, limit=10):
         where, params = self.where(filters)
         sql = f"""SELECT COALESCE(codigo_unidade_gestora, '') AS codigo,
             COALESCE(unidade_gestora, '') AS nome, SUM(valor_centavos) AS total_centavos,
-            COUNT(*) AS registros FROM pagamentos WHERE {where}
+            COUNT(*) AS registros, COUNT(valor_centavos) AS registros_com_valor,
+            SUM(CASE WHEN valor_centavos IS NULL THEN 1 ELSE 0 END) AS registros_sem_valor
+            FROM pagamentos WHERE {where}
             GROUP BY codigo_unidade_gestora, unidade_gestora
             ORDER BY total_centavos DESC, nome, codigo"""
         if limit is not None:
@@ -175,10 +186,13 @@ class Repository:
         where, params = self.where(filters)
         with self.connect() as connection:
             rows = connection.execute(f"""SELECT mes, SUM(valor_centavos) AS total_centavos,
-                COUNT(*) AS registros FROM pagamentos WHERE {where} GROUP BY mes ORDER BY mes""", params).fetchall()
+                COUNT(*) AS registros, COUNT(valor_centavos) AS registros_com_valor,
+                SUM(CASE WHEN valor_centavos IS NULL THEN 1 ELSE 0 END) AS registros_sem_valor
+                FROM pagamentos WHERE {where} GROUP BY mes ORDER BY mes""", params).fetchall()
         available = {row["mes"]: dict(row) for row in rows}
         months = [filters["mes"]] if filters.get("mes") else range(1, 13)
-        return [available.get(month, {"mes": month, "total_centavos": 0, "registros": 0}) | {"nome": MONTH_NAMES[month - 1]}
+        return [available.get(month, {"mes": month, "total_centavos": 0, "registros": 0,
+                                     "registros_com_valor": 0, "registros_sem_valor": 0}) | {"nome": MONTH_NAMES[month - 1]}
                 for month in months]
 
     def records(self, filters, page=1):
@@ -194,13 +208,15 @@ class Repository:
 
     def csv_rows(self, filters, kind):
         if kind == "mensal":
-            yield ["Mes", "NomeMes", "ValorPagoLiquido_R$", "Registros"]
+            yield ["Mes", "NomeMes", "ValorPagoLiquido_R$", "Registros", "RegistrosComValor", "RegistrosSemValor"]
             for row in self.monthly(filters):
-                yield [row["mes"], row["nome"], cents_decimal(row["total_centavos"]), row["registros"]]
+                yield [row["mes"], row["nome"], cents_decimal(row["total_centavos"]), row["registros"],
+                       row["registros_com_valor"], row["registros_sem_valor"]]
         elif kind == "ranking":
-            yield ["CodigoUnidadeGestora", "UnidadeGestora", "ValorPagoLiquido_R$", "Registros"]
+            yield ["CodigoUnidadeGestora", "UnidadeGestora", "ValorPagoLiquido_R$", "Registros", "RegistrosComValor", "RegistrosSemValor"]
             for row in self.ranking(filters, limit=None):
-                yield [row["codigo"], row["nome"], cents_decimal(row["total_centavos"]), row["registros"]]
+                yield [row["codigo"], row["nome"], cents_decimal(row["total_centavos"]), row["registros"],
+                       row["registros_com_valor"], row["registros_sem_valor"]]
         elif kind == "detalhes":
             yield ["IdLocal", "IdOrigem", "DataRegistro", "CodigoUnidadeGestora", "UnidadeGestora",
                    "ValorPago_R$", "TipoDocumento", "NumeroDocumento", "ArquivoOrigem", "LinhaOrigem"]
@@ -211,7 +227,7 @@ class Repository:
                     FROM pagamentos WHERE {where} ORDER BY data_pagamento DESC, id DESC""", params)
                 for row in cursor:
                     values = list(row)
-                    values[5] = cents_decimal(values[5]) if values[5] is not None else ""
+                    values[5] = cents_decimal(values[5])
                     yield values
 
 

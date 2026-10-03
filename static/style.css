@@ -165,6 +165,9 @@ select:hover:not(:disabled) { border-color: #8cabbc; }
 .legend-swatch.peak { background: var(--accent); }
 .legend-swatch.negative { background: var(--negative); }
 .legend-swatch.missing { background: #edf2f5; border: 1px dashed #8fa8b7; }
+.legend-swatch.unavailable { background: transparent; border-bottom: 2px dashed #718798; border-radius: 0; }
+.monthly-svg .unavailable-label { fill: #526f83; font-weight: 650; }
+.bar-group:focus-visible .unavailable-marker { stroke: var(--navy); stroke-width: 3; }
 .chart-data { border-top: 1px solid #e5edf2; margin-top: 2px; color: #476779; font-size: 11px; }
 .chart-data summary { cursor: pointer; padding: 11px 0 7px; font-weight: 600; }
 .chart-data table { margin: 5px 0 10px; }

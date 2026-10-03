@@ -1,6 +1,6 @@
 # Pagamentos ES 2024
 
-Turma **2ESPH-2026**. Código e materiais: https://github.com/Stratfy/cp5-data
+Turma **2ESPH-2026**. [Repositório de código e materiais](https://github.com/Stratfy/cp5-data).
 
 - [Relatório técnico de 8 páginas](docs/relatorio_pagamentos_es_2024.pdf)
 - [Apresentação editável de 8 slides](docs/apresentacao_pagamentos_es_2024.pptx)
@@ -8,7 +8,16 @@ Turma **2ESPH-2026**. Código e materiais: https://github.com/Stratfy/cp5-data
 - [Roteiro de 12 minutos para quatro integrantes](docs/guia_apresentacao_pagamentos_es_2024.pdf)
 - [Conferência da entrega](VALIDACAO.md)
 
-Os nomes ainda estão como **Integrante 1–4**. As responsabilidades são propostas. Confirmar com o professor a exceção para quatro integrantes, pois o enunciado pede cinco a oito.
+| Integrante | RM | Papel proposto | Dedicação estimada no ciclo de 16 semanas | Entregável proposto |
+|---|---|---|---|---|
+| Luigi Mendes Cabrini | 563552 | Produto e gestão | 160 h; 10 h/semana | Problema, requisitos, proposta técnica e organização dos marcos |
+| Bruno Koeke | 561309 | Dados e análise | 240 h; 15 h/semana | Importação, auditoria, indicadores e verificação estatística |
+| Rogério Cruz Arroyo | 563517 | Desenvolvimento | 320 h; 20 h/semana | Aplicação, integração da base e instruções de execução |
+| Anthony Sforzin | 562096 | Testes e documentação | 160 h; 10 h/semana | Testes, reprodução, roteiro e preparação da demonstração |
+
+Nomes e RMs foram informados pelo grupo. Papéis, entregáveis e horas são propostas para o planejamento simulado; não comprovam contribuições já realizadas nem responsabilidades aceitas. Cada integrante precisa revisar e assumir sua parte antes da apresentação.
+
+A equipe mantém quatro integrantes por decisão do grupo. O enunciado indica cinco a oito; não há autorização do professor registrada para a exceção.
 
 Prova de conceito acadêmica para investigar os pagamentos registrados nos quatro arquivos de despesas do Espírito Santo de 2024 fornecidos na atividade. Público inicial: gestores públicos e analistas de controle interno que precisam comparar unidades gestoras e períodos e conferir a origem dos números.
 
@@ -47,6 +56,10 @@ A navegação lateral leva ao resumo, às análises, aos registros e à metodolo
 
 Entradas: os quatro ZIPs `despesas_es_2024_completo_parte_01.zip` até `despesas_es_2024_completo_parte_04.zip`. Os ZIPs de 2025 não entram nesta POC. O campo `Orgao` está vazio em todos os registros recebidos; por isso, a comparação usa `CodigoUnidadeGestora` e `UnidadeGestora` em conjunto.
 
+O enunciado caracteriza os arquivos fornecidos como **recorte sistemático**. A preparação lê integralmente esse recorte local de 2024; isso não o transforma em amostra aleatória estadual nem comprova a base integral do Estado. O sorteio aleatório interno usado no exercício de intervalo de confiança é uma etapa distinta, restrita aos registros desta base.
+
+Referências diretas: [recurso oficial de despesas de 2024 do Portal de Dados Abertos ES](https://dados2.es.gov.br/dataset/portal-da-transparencia-despesas-execucao-orcamentaria-e-financeira/resource/b34ae52a-a739-412a-9bab-80f53ba72f4f?inner_span=True) e [NIST: intervalo de Wilson para proporções](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm). O dicionário fornecido na atividade é `dicionario_despesas.pdf`, versão 1.0 de 13/07/2021, seção Despesa. A versão atual do recurso oficial não foi usada como substituta dos quatro ZIPs do professor; a auditoria dos arquivos originais está em `data/auditoria_arquivos.csv`.
+
 Para reconstruir a base a partir dos arquivos originais, mantendo-os intactos:
 
 ```powershell
@@ -76,6 +89,7 @@ O processo preserva todas as linhas do recorte, incluindo **156.177 valores posi
 - O calendário tem registros nos 12 meses, de **02/01/2024 a 31/12/2024**. Isso não comprova cobertura integral das despesas estaduais. O alcance da análise são os quatro arquivos recebidos.
 - O ranking agrupa por código **e** nome da unidade. Espaços externos são removidos; códigos e nomes diferentes continuam separados.
 - Um mês com soma zero pode ter registros de valor zero ou valores que se compensam. A tabela mensal informa a contagem e diferencia ausência de linhas.
+- Se uma carga tiver valores ausentes, os totais somam os valores disponíveis e o painel informa quantos registros ficaram sem ValorPago válido. Um recorte sem nenhum valor válido aparece como **Não informado**. Ausências não são substituídas por zero. Registros sem mês válido continuam rastreáveis, mas ficam fora da série mensal; o aviso explica a diferença de valor entre a série e o total disponível.
 - Os dados descrevem concentração e variação; não demonstram eficiência, irregularidade ou a causa de uma mudança.
 - A base e os CSVs do painel excluem CPF/CNPJ/NIS, nomes dos favorecidos, histórico livre e dados bancários.
 
@@ -114,9 +128,25 @@ Execute os testes na pasta do projeto:
 python -m unittest discover -s tests -v
 ```
 
-São **14 testes automatizados**, que cobrem centavos e ajustes negativos, zeros, recorte do ano, combinação de filtros, meses sem registros, ranking e reconciliação, paginação sem perda de linhas, origem verificável e IDs repetidos, consultas inválidas, SQL parametrizado, exportações e proteção contra fórmulas, rotas/erros e recuperação gzip sem sobrescrita ou base parcial. Os testes usam uma base pequena temporária; não modificam a base entregue.
+Os testes automatizados cobrem centavos e ajustes negativos, zeros, recorte do ano, combinação de filtros, meses sem registros, valores monetários ausentes, registros fora do calendário, ranking e reconciliação, paginação sem perda de linhas, origem verificável e IDs repetidos, consultas inválidas, SQL parametrizado, exportações e proteção contra fórmulas, rotas/erros e recuperação gzip sem sobrescrita ou base parcial. Os testes usam bases pequenas temporárias; não modificam a base entregue. A conferência da versão auditada e as pendências estão em `VALIDACAO.md`.
 
 Na base real, o total do painel, a soma de todas as unidades do ranking e a soma dos 12 meses foram conciliados em **1.033.709.885.862 centavos**. A preparação também realiza `PRAGMA integrity_check`. A interface foi conferida no navegador com a base real.
+
+## Assistência de IA e revisão humana
+
+IA foi usada para apoiar a programação, preparar a análise e redigir os materiais. A aplicação pronta não consulta modelos de IA, não envia registros a um serviço externo e não produz interpretações automáticas por IA.
+
+A verificação técnica executada incluiu leitura do enunciado e do dicionário, auditoria completa dos quatro CSVs, reconciliação dos totais em centavos, reprodução do sorteio e do intervalo de Wilson, testes automatizados do aplicativo, conferência de registros nos arquivos de origem, inspeção visual dos documentos e consulta da interface com a base real. Essas checagens verificam o resultado técnico; não substituem a revisão de cada integrante.
+
+A revisão humana pelos quatro integrantes, a confirmação dos papéis propostos e o ensaio conjunto de 12 minutos ainda não estão comprovados. Cada pessoa deve revisar seu entregável e preparar a explicação de sua contribuição. A banca pode perguntar sobre a métrica, as limitações, a origem dos registros e a separação entre o recorte sistemático e a amostra aleatória interna.
+
+## Conferência antes da entrega
+
+- Conferir nomes, RMs e turma no relatório, na apresentação e no roteiro final.
+- Revisar e assumir as responsabilidades propostas; a tabela não é um registro de trabalho já realizado.
+- Ensaiar os 12 minutos, incluindo o resultado geral, Saúde em dezembro, rastreabilidade, exportação e Polícia Penal em janeiro sem registros.
+- Conceder acesso à banca ao repositório e aos materiais vinculados ou definir acesso público. A verificação sem login de 03/10/2026 retornou 404 na API do GitHub, enquanto o acesso autenticado funcionou; o acesso da banca ainda não está confirmado. Os links já estão preenchidos, mas isso não comprova que a banca possa abri-los nem que a entrega foi enviada.
+- Entregar PDF e links no canal indicado em aula até **04/10/2026 às 23h59**; apresentação da turma 2ESPH em **06/10/2026**. Todos os integrantes devem comparecer, conforme orientação da atividade.
 
 ## Limites e próximos passos
 
