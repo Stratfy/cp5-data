@@ -41,6 +41,8 @@ O projeto inclui a base pronta compactada `data/pagamentos_2024.sqlite3.gz`. Na 
 
 As duas perguntas investigadas são **quais unidades gestoras concentram a soma líquida de ValorPago no recorte** e **como essa soma varia entre os meses de 2024**. O painel oferece tabela de origem e exportações para tornar os resultados verificáveis.
 
+A navegação lateral leva ao resumo, às análises, aos registros e à metodologia. Os destaques mostram a unidade com maior total e o mês com maior soma líquida no recorte aplicado. Ao alterar um filtro, a mensagem pede que você clique em **Consultar**; os dados e as exportações mantêm o recorte anterior até a consulta terminar. No celular, deslize o gráfico mensal para ver os demais meses ou abra **Ver valores mensais**. As barras também podem receber foco pelo teclado, com descrição acessível dos valores.
+
 ## Dados e reprodução
 
 Entradas: os quatro ZIPs `despesas_es_2024_completo_parte_01.zip` até `despesas_es_2024_completo_parte_04.zip`. Os ZIPs de 2025 não entram nesta POC. O campo `Orgao` está vazio em todos os registros recebidos; por isso, a comparação usa `CodigoUnidadeGestora` e `UnidadeGestora` em conjunto.

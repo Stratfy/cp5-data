@@ -10,58 +10,78 @@
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <aside class="sidebar" aria-label="Navegação do painel">
+    <div class="sidebar-brand"><span class="brand-rule" aria-hidden="true"></span><div><strong>Pagamentos ES</strong><span>Transparência pública</span></div></div>
+    <div class="sidebar-year"><span>BASE DE REFERÊNCIA</span><strong>2024</strong></div>
+    <nav aria-label="Seções do painel">
+      <a href="#panorama"><span class="nav-number" aria-hidden="true">01</span>Visão geral</a>
+      <a href="#analises"><span class="nav-number" aria-hidden="true">02</span>Distribuição</a>
+      <a href="#registros-secao"><span class="nav-number" aria-hidden="true">03</span>Registros</a>
+      <a href="#metodologia"><span class="nav-number" aria-hidden="true">04</span>Metodologia</a>
+    </nav>
+    <div class="sidebar-note"><p>Dados com origem verificável.</p><span>Recorte fornecido na atividade.<br>Espírito Santo · 2024</span></div>
+    <div class="sidebar-footer"><span class="local-marker" aria-hidden="true"></span> Consulta local</div>
+  </aside>
   <header class="topbar">
-    <div class="brand"><span class="brand-icon" aria-hidden="true">↗</span><span>Pagamentos <strong>ES 2024</strong></span></div>
-    <div class="header-meta"><span class="status-dot"></span> Consulta local <span class="divider">|</span> ES · 2024</div>
+    <div class="brand"><span>Pagamentos <strong>ES 2024</strong></span></div>
+    <div class="breadcrumb"><span>Dados públicos</span><span aria-hidden="true">/</span><strong>Painel de pagamentos</strong></div>
+    <div class="header-meta"><span class="status-dot" aria-hidden="true"></span> Espírito Santo <span class="divider">·</span> 2024</div>
   </header>
   <main id="conteudo">
     <section class="intro">
-      <p class="eyebrow">TRANSPARÊNCIA QUE DÁ PARA ENTENDER</p>
-      <h1>Para onde foram os pagamentos?</h1>
-      <p class="intro-copy">Explore os registros de 2024, compare unidades gestoras e acompanhe a variação entre os meses.</p>
-      <div class="intro-tags"><span>Espírito Santo</span><span>Dados fornecidos na atividade</span><a href="#metodologia">Como os números são calculados ↓</a></div>
+      <p class="eyebrow">ANÁLISE DE DESPESAS PÚBLICAS</p>
+      <h1>Pagamentos ES 2024</h1>
+      <p class="intro-copy">Compare unidades gestoras, acompanhe os meses e confira os registros que formam cada resultado.</p>
+      <div class="intro-tags"><span>Recorte de 2024</span><span>Dados fornecidos na atividade</span><a href="#metodologia">Entenda a metodologia</a></div>
     </section>
 
     <section class="filter-card" aria-labelledby="filtros-titulo">
-      <div class="filter-head"><div><h2 id="filtros-titulo">Escolha o que quer investigar</h2><p>Os filtros se aplicam aos indicadores, gráficos, registros e arquivos exportados.</p></div></div>
+      <div class="filter-head"><div><h2 id="filtros-titulo">Refine sua consulta</h2><p>Indicadores, gráficos e exportações acompanham os filtros aplicados.</p></div></div>
       <form id="filtros">
         <label class="unit-filter">Unidade gestora<select id="unidade" name="unidade" disabled><option value="">Todas as unidades</option></select></label>
         <label>Mês do registro<select id="mes" name="mes" disabled><option value="">Todos os meses</option></select></label>
-        <button id="aplicar" type="submit" class="primary" disabled>Consultar <span aria-hidden="true">→</span></button>
+        <button id="aplicar" type="submit" class="primary" disabled>Consultar</button>
         <button id="limpar" type="button" class="secondary" disabled>Limpar</button>
       </form>
     </section>
 
-    <div class="result-head"><h2>Panorama dos registros</h2><p id="recorte">Carregando a base de 2024…</p></div>
+    <div class="result-head" id="panorama"><div><p class="section-kicker">VISÃO GERAL</p><h2>Resumo da consulta</h2></div><p id="consulta-status" class="consulta-status" role="status" aria-live="polite" data-state="loading">Carregando a base…</p></div>
+    <div id="filtros-aplicados" class="applied-filters" aria-label="Filtros aplicados"><span class="context-chip">2024</span><span class="context-chip">Todos os meses</span><span class="context-chip unit-chip">Todas as unidades</span></div>
+    <p id="recorte" class="scope-description">Carregando a base de 2024…</p>
     <div id="alerta" class="alert" role="status" aria-live="polite" hidden></div>
     <div id="erro" class="alert error" role="alert" hidden><span id="erro-texto"></span><button id="tentar" type="button">Tentar novamente</button></div>
     <section id="resultados" aria-busy="true">
       <div class="kpi-grid">
-        <article class="kpi highlight"><p>Total pago líquido registrado</p><strong id="total">—</strong><span>Soma de ValorPago, incluindo negativos</span></article>
+        <article class="kpi highlight"><p>Total pago líquido registrado</p><strong id="total">—</strong><span>Soma de ValorPago, incluindo negativos</span><span class="kpi-footnote">No recorte selecionado</span></article>
         <article class="kpi"><p>Registros no recorte</p><strong id="registros">—</strong><span id="zeros">Linhas da base de despesas</span></article>
         <article class="kpi"><p>Unidades gestoras</p><strong id="unidades">—</strong><span>Código e nome considerados em conjunto</span></article>
         <article class="kpi"><p>Registros negativos</p><strong id="ajustes">—</strong><span id="ajustes-valor">Mantidos no total líquido</span></article>
       </div>
 
+      <div class="section-heading" id="analises"><div><p class="section-kicker">DISTRIBUIÇÃO DOS VALORES</p><h2>Distribuição dos pagamentos</h2></div><p>Valores por unidade gestora e mês.</p></div>
       <div class="charts-grid">
         <article class="panel ranking-panel">
-          <div class="panel-head"><div><p class="panel-kicker">PERGUNTA 01</p><h3>Quais unidades concentram os pagamentos?</h3></div><span class="small-pill">Até 10 unidades</span></div>
+          <div class="panel-head"><div><p class="panel-kicker">POR UNIDADE GESTORA</p><h3>Onde se concentram os pagamentos?</h3></div><span class="small-pill">Até 10 unidades</span></div>
           <p class="chart-description">Ordenadas pela soma líquida registrada, da maior para a menor.</p>
+          <div id="ranking-destaque" class="chart-insight"><span class="insight-label">Maior unidade no recorte</span><strong class="insight-value">—</strong><span class="insight-detail">Aguardando consulta</span></div>
           <div id="ranking" class="ranking" aria-label="Ranking de unidades gestoras"></div>
           <a id="exportar-ranking" class="export-link" href="/api/exportar?tipo=ranking">↓ Exportar ranking completo</a>
         </article>
         <article class="panel monthly-panel">
-          <div class="panel-head"><div><p class="panel-kicker">PERGUNTA 02</p><h3>Como os pagamentos variam entre os meses?</h3></div></div>
+          <div class="panel-head"><div><p class="panel-kicker">POR MÊS DO REGISTRO</p><h3>Como os valores mudam no ano?</h3></div></div>
           <p id="mensal-descricao" class="chart-description">Meses de 2024, conforme a data de referência de cada registro.</p>
+          <div id="mensal-destaque" class="chart-insight"><span class="insight-label">Maior mês no recorte</span><strong class="insight-value">—</strong><span class="insight-detail">Aguardando consulta</span></div>
           <div id="mensal" class="monthly-chart" aria-label="Pagamentos por mês"></div>
+          <p id="mensal-deslize" class="chart-scroll-hint">Deslize o gráfico para ver todos os meses →</p>
+          <div class="chart-legend" aria-label="Legenda do gráfico mensal"><span><i class="legend-swatch" aria-hidden="true"></i>Soma líquida</span><span><i class="legend-swatch peak" aria-hidden="true"></i>Maior mês</span><span><i class="legend-swatch negative" aria-hidden="true"></i>Valores negativos</span><span><i class="legend-swatch missing" aria-hidden="true"></i>Sem registros</span></div>
           <details class="chart-data"><summary>Ver valores mensais</summary><div class="table-scroll"><table><thead><tr><th scope="col">Mês</th><th scope="col" class="number">Total líquido</th><th scope="col" class="number">Registros</th></tr></thead><tbody id="mensal-tabela"></tbody></table></div></details>
           <a id="exportar-mensal" class="export-link" href="/api/exportar?tipo=mensal">↓ Exportar valores mensais</a>
         </article>
       </div>
 
-      <section class="panel records-panel" aria-labelledby="registros-titulo">
-        <div class="panel-head"><div><p class="panel-kicker">CONFIRA A ORIGEM</p><h3 id="registros-titulo">Os registros por trás dos números</h3><p class="chart-description">Confira o CSV e a linha de origem. A linha 1 é o cabeçalho do arquivo.</p></div><a id="exportar-detalhes" class="download-button" href="/api/exportar?tipo=detalhes">↓ Baixar registros filtrados</a></div>
-        <div class="table-scroll"><table class="records-table"><thead><tr><th scope="col">Data do registro</th><th scope="col">Unidade gestora</th><th scope="col" class="number">Valor pago</th><th scope="col">Documento</th><th scope="col">Fonte verificável</th></tr></thead><tbody id="registros-tabela"></tbody></table></div>
+      <section class="panel records-panel" id="registros-secao" aria-labelledby="registros-titulo">
+        <div class="panel-head"><div><p class="panel-kicker">ORIGEM VERIFICÁVEL</p><h3 id="registros-titulo">Os registros por trás dos números</h3><p class="chart-description">CSV e linha de origem identificados. A linha 1 corresponde ao cabeçalho.</p></div><a id="exportar-detalhes" class="download-button" href="/api/exportar?tipo=detalhes">Baixar registros filtrados</a></div>
+        <div class="table-scroll"><table class="records-table"><caption class="sr-only">Registros filtrados com data, unidade gestora, valor pago, documento e origem nos arquivos fornecidos.</caption><thead><tr><th scope="col">Data do registro</th><th scope="col">Unidade gestora</th><th scope="col" class="number">Valor pago</th><th scope="col">Documento</th><th scope="col">Arquivo e linha de origem</th></tr></thead><tbody id="registros-tabela"></tbody></table></div>
         <div class="pagination"><p id="pagina-info">—</p><div><button id="anterior" type="button" class="secondary" disabled>← Anterior</button><span id="pagina-atual">Página 1</span><button id="proxima" type="button" class="secondary" disabled>Próxima →</button></div></div>
       </section>
     </section>

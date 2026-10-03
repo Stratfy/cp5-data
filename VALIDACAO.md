@@ -16,6 +16,8 @@ Conferência executada em 03/10/2026 com os quatro arquivos de 2024 fornecidos n
 - Amostra interna de 10.000 IDs reproduzida com semente 2024. São 3.126 valores positivos; IC Wilson95% de 30,36% a 32,18%, restrito à base local.
 - Relatório com 8 páginas e apresentação com 8 slides, revisados visualmente.
 
+Após a revisão de design, a interface foi conferida em larguras de 390, 820, 1280 e 1440 pixels, sem rolagem horizontal da página. O gráfico e a tabela mantêm rolagem interna quando necessária. Total completo, rótulos, contraste, destaques e estado sem registros foram revisados. Alterar os controles conserva os filtros aplicados e pede uma nova consulta; os destaques de Saúde em dezembro correspondem aos 7.790 registros e R$ 185.199.026,38. Navegação por seções e foco das barras pelo teclado foram incluídos. O cronograma dos slides foi alinhado às seis etapas do relatório, e os materiais usam a mesma paleta navy/teal.
+
 As verificações técnicas descritas não substituem a revisão e o ensaio pelos integrantes. Os papéis na proposta são sugestões e devem refletir o que cada pessoa assumir e validar. Os nomes dos quatro integrantes ainda precisam ser preenchidos. O enunciado pede grupo de cinco a oito pessoas, portanto a turma deve confirmar a exceção para quatro.
 
 O trabalho recebeu assistência de IA na programação, análise e redação. Nenhum arquivo original foi alterado. O conjunto local não comprova a cobertura integral das despesas do Estado.
