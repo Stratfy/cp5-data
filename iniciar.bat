@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 where py >nul 2>nul
 if not errorlevel 1 (
-    py -3 --version >nul 2>nul
+    py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>nul
     if not errorlevel 1 (
         py -3 "%~dp0app.py"
         goto fim
@@ -11,18 +11,21 @@ if not errorlevel 1 (
 )
 where python >nul 2>nul
 if not errorlevel 1 (
-    python --version >nul 2>nul
+    python -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>nul
     if not errorlevel 1 (
         python "%~dp0app.py"
         goto fim
     )
 )
-if exist "C:\Users\bruno\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" (
-    "C:\Users\bruno\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" "%~dp0app.py"
+if exist "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" (
+    "%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" "%~dp0app.py"
     goto fim
 )
-echo Python nao encontrado. Instale Python 3.10 ou superior e marque a opcao de adicionar ao PATH.
+echo Python 3.10 ou superior nao encontrado.
+echo Instale uma versao compativel e marque a opcao de adicionar ao PATH.
 echo Depois, abra novamente este arquivo.
+pause
+exit /b 1
 :fim
 if errorlevel 1 pause
 endlocal

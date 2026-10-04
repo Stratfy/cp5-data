@@ -59,11 +59,13 @@ def numeric_audit() -> dict:
                 valores_com_fracao_inferior_a_centavo=0)
 
 
-def save_csv(path: Path, rows: list[dict]) -> None:
-    if not rows:
-        return
+def save_csv(path: Path, rows: list[dict], fieldnames: tuple[str, ...] | None = None) -> None:
+    # Mesmo uma consulta vazia substitui a exportacao anterior e preserva o cabecalho.
+    columns = fieldnames or (tuple(rows[0]) if rows else None)
+    if columns is None:
+        raise ValueError("Informe as colunas para exportar um CSV sem registros.")
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), delimiter=";")
+        writer = csv.DictWriter(stream, fieldnames=columns, delimiter=";")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -281,43 +283,50 @@ def main() -> None:
     """)
     connection.row_factory = sqlite3.Row
     sum_row = connection.execute("""SELECT count(*) registros,
-        coalesce(sum(valor_centavos), 0) total,
+        CASE WHEN count(*) = 0 THEN 0 ELSE sum(valor_centavos) END total,
         coalesce(sum(CASE WHEN valor_centavos > 0 THEN valor_centavos ELSE 0 END), 0) positivos,
         coalesce(sum(CASE WHEN valor_centavos < 0 THEN valor_centavos ELSE 0 END), 0) negativos,
-        sum(CASE WHEN valor_centavos <> 0 THEN 1 ELSE 0 END) nao_zero,
+        coalesce(sum(CASE WHEN valor_centavos <> 0 THEN 1 ELSE 0 END), 0) nao_zero,
         coalesce(sum(CASE WHEN mes IS NULL THEN valor_centavos ELSE 0 END), 0) sem_mes
         FROM pagamentos""").fetchone()
     ranking = []
     for rank, row in enumerate(connection.execute("""SELECT codigo_unidade_gestora, unidade_gestora,
         count(*) registros, sum(CASE WHEN valor_centavos <> 0 THEN 1 ELSE 0 END) registros_com_valor_nao_zero,
-        coalesce(sum(valor_centavos), 0) valor_pago_centavos FROM pagamentos
+        sum(valor_centavos) valor_pago_centavos FROM pagamentos
         GROUP BY codigo_unidade_gestora, unidade_gestora
         ORDER BY valor_pago_centavos DESC, codigo_unidade_gestora, unidade_gestora"""), 1):
         item = dict(posicao=rank, **dict(row))
-        item.update(valor_pago_reais=item["valor_pago_centavos"] / 100,
-                    participacao_percentual=item["valor_pago_centavos"] / sum_row["total"] * 100 if sum_row["total"] else None)
+        total = item["valor_pago_centavos"]
+        item.update(valor_pago_reais=total / 100 if total is not None else None,
+                    participacao_percentual=total / sum_row["total"] * 100
+                    if total is not None and sum_row["total"] else None)
         ranking.append(item)
     monthly = []
     for row in connection.execute("""SELECT mes, count(*) registros,
         sum(CASE WHEN valor_centavos <> 0 THEN 1 ELSE 0 END) registros_com_valor_nao_zero,
-        coalesce(sum(valor_centavos), 0) valor_pago_centavos FROM pagamentos
+        sum(valor_centavos) valor_pago_centavos FROM pagamentos
         WHERE mes IS NOT NULL GROUP BY mes ORDER BY mes"""):
         item = dict(row)
         item.update(nome_mes=MONTH_NAMES[item["mes"] - 1], ano_mes=f"{YEAR}-{item['mes']:02d}",
-                    valor_pago_reais=item["valor_pago_centavos"] / 100)
+                    valor_pago_reais=item["valor_pago_centavos"] / 100
+                    if item["valor_pago_centavos"] is not None else None)
         monthly.append(item)
     months = [item["mes"] for item in monthly]
     all_12_months = months == list(range(1, 13))
-    monthly_values = [item["valor_pago_reais"] for item in monthly]
+    monthly_values = [item["valor_pago_reais"] for item in monthly if item["valor_pago_reais"] is not None]
     descriptive = dict(n_meses=len(months), meses_observados=months, todos_12_meses_2024=all_12_months,
                        media_mensal_reais=statistics.mean(monthly_values) if monthly_values else None,
                        mediana_mensal_reais=statistics.median(monthly_values) if monthly_values else None,
-                       desvio_padrao_amostral_mensal_reais=statistics.stdev(monthly_values) if len(months) > 1 else None,
+                       desvio_padrao_amostral_mensal_reais=statistics.stdev(monthly_values) if len(monthly_values) > 1 else None,
                        minimo_mensal_reais=min(monthly_values) if monthly_values else None,
                        maximo_mensal_reais=max(monthly_values) if monthly_values else None)
-    descriptive.update(variancia_amostral_mensal_reais_quadrados=statistics.variance(monthly_values) if len(months) > 1 else None,
+    descriptive.update(variancia_amostral_mensal_reais_quadrados=statistics.variance(monthly_values) if len(monthly_values) > 1 else None,
                        desvio_padrao_populacional_mensal_reais=statistics.pstdev(monthly_values) if monthly_values else None)
     descriptive["natureza"] = "Estatisticas descritivas dos totais mensais observados; nao foi calculado IC mensal devido a possivel sazonalidade e dependencia temporal."
+    unavailable_months = [item["mes"] for item in monthly if item["valor_pago_centavos"] is None]
+    if unavailable_months:
+        descriptive["natureza"] += (" Meses sem nenhum ValorPago valido foram excluidos dos calculos,"
+                                   f" sem substituir ausencias por zero: {unavailable_months}.")
     eligible_ids = [row[0] for row in connection.execute(
         "SELECT id FROM pagamentos WHERE valor_centavos IS NOT NULL ORDER BY id")]
     population_n = len(eligible_ids)
@@ -379,14 +388,20 @@ def main() -> None:
                        quantidade_partes=4, unidades_gestoras=len(ranking),
                        alcance="Somente registros contidos nos quatro arquivos fornecidos. O nome completo dos arquivos nao comprova cobertura integral das despesas do Estado."),
         total_registros=sum_row["registros"], registros_com_valor_nao_zero=sum_row["nao_zero"],
-        total_pago_centavos=sum_row["total"], total_pago_reais=sum_row["total"] / 100,
+        total_pago_centavos=sum_row["total"],
+        total_pago_reais=sum_row["total"] / 100 if sum_row["total"] is not None else None,
         soma_valores_positivos_centavos=sum_row["positivos"], soma_ajustes_negativos_centavos=sum_row["negativos"],
         soma_sem_mes_valido_centavos=sum_row["sem_mes"], auditoria=audit,
         estatisticas_mensais=descriptive, estatistica_amostral=sample_statistics,
         ranking_unidades=ranking, evolucao_mensal=monthly)
-    if sum(item["valor_pago_centavos"] for item in ranking) != sum_row["total"]:
+    # A conciliacao soma somente valores disponiveis; os artefatos mantem NULL
+    # quando ha registros, mas nenhum ValorPago valido no respectivo agregado.
+    available_total = sum_row["total"] if sum_row["total"] is not None else 0
+    ranking_total = sum(item["valor_pago_centavos"] for item in ranking if item["valor_pago_centavos"] is not None)
+    monthly_total = sum(item["valor_pago_centavos"] for item in monthly if item["valor_pago_centavos"] is not None)
+    if ranking_total != available_total:
         raise AssertionError("Ranking nao reconcilia com total da base")
-    if sum(item["valor_pago_centavos"] for item in monthly) + sum_row["sem_mes"] != sum_row["total"]:
+    if monthly_total + sum_row["sem_mes"] != available_total:
         raise AssertionError("Serie mensal nao reconcilia com total da base")
     if row_id != connection.execute("SELECT count(*) FROM pagamentos").fetchone()[0]:
         raise AssertionError("Contagem da base diferente dos registros lidos")
@@ -401,10 +416,15 @@ def main() -> None:
     connection.close()
     temporary_database.replace(database)
     (args.saida / "resumo_analise.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    save_csv(args.saida / "ranking_unidades.csv", ranking)
-    save_csv(args.saida / "evolucao_mensal.csv", monthly)
+    save_csv(args.saida / "ranking_unidades.csv", ranking,
+             ("posicao", "codigo_unidade_gestora", "unidade_gestora", "registros",
+              "registros_com_valor_nao_zero", "valor_pago_centavos", "valor_pago_reais", "participacao_percentual"))
+    save_csv(args.saida / "evolucao_mensal.csv", monthly,
+             ("mes", "registros", "registros_com_valor_nao_zero", "valor_pago_centavos", "nome_mes",
+              "ano_mes", "valor_pago_reais"))
     save_csv(args.saida / "auditoria_arquivos.csv", audit["por_arquivo"])
-    save_csv(args.saida / "amostra_estatistica.csv", sample_rows)
+    save_csv(args.saida / "amostra_estatistica.csv", sample_rows,
+             ("id", "arquivo_origem", "linha_origem", "valor_pago_centavos", "pagamento_positivo"))
     print(json.dumps({key: summary[key] for key in ("total_registros", "total_pago_centavos", "cobertura", "estatisticas_mensais", "estatistica_amostral", "verificacao")}, ensure_ascii=False, indent=2))
 
 

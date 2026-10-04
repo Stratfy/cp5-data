@@ -3,10 +3,12 @@ const $ = (id) => document.getElementById(id);
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const compact = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat("pt-BR");
+const percent = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const hasMoney = (cents) => typeof cents === "number" && Number.isFinite(cents);
 const formatMoney = (cents) => hasMoney(cents) ? money.format(cents / 100) : "Não informado";
 const formatDate = (date) => date ? date.split("-").reverse().join("/") : "—";
-const state = { filters: { mes: "", unidade: "" }, page: 1, pages: 1, controller: null, ready: false, failed: false };
+const state = { filters: { mes: "", unidade: "" }, page: 1, pages: 1, controller: null, ready: false, failed: false, busy: false };
+let dismissActiveTooltip = null;
 
 function node(tag, text, className) {
   const element = document.createElement(tag);
@@ -28,9 +30,13 @@ async function request(endpoint, extra = {}) {
   return data;
 }
 function busy(value) {
+  state.busy = value;
+  document.dispatchEvent(new CustomEvent("pagamentos:loading", { detail: { active: value } }));
   $("resultados").setAttribute("aria-busy", String(value));
   if (value) consultationStatus(state.ready ? "Consultando o recorte…" : "Preparando os dados de 2024…", "loading");
-  for (const id of ["aplicar", "limpar", "mes", "unidade"]) $(id).disabled = value || !state.ready;
+  for (const id of ["aplicar", "limpar", "mes", "unidade", "exemplo-panorama"]) $(id).disabled = value || !state.ready;
+  for (const id of ["exemplo-saude", "exemplo-penal"]) $(id).disabled = value || !state.ready || !$(id).dataset.unit;
+  document.querySelectorAll(".ranking-row, .context-chip.removable").forEach((button) => { button.disabled = value || !state.ready || button.dataset.unavailable === "true"; });
   $("anterior").disabled = value || state.page <= 1;
   $("proxima").disabled = value || state.page >= state.pages;
 }
@@ -92,17 +98,82 @@ function renderSummary(data) {
   const unit = state.filters.unidade ? [...$("unidade").options].find((option) => option.value === state.filters.unidade)?.textContent || "Unidade selecionada" : "Todas as unidades";
   $("recorte").textContent = `2024 · ${month} · ${unit} · ${integer.format(data.registros)} registro(s)`;
   const applied = $("filtros-aplicados");
-  if (applied) applied.replaceChildren(node("span", "2024", "context-chip"), node("span", month, "context-chip"), node("span", unit, "context-chip unit-chip"));
+  if (applied) applied.replaceChildren(node("span", "2024", "context-chip"), filterChip(month, "mes"), filterChip(unit, "unidade", "unit-chip"));
   $("mensal-descricao").textContent = state.filters.mes
     ? "O filtro de mês também se aplica a este gráfico. Escolha Todos os meses para comparar o ano."
     : "Meses de 2024, conforme a data de referência de cada registro. Meses sem linhas são identificados na tabela.";
   renderDataQuality(data);
 }
+function filterChip(label, key, className = "") {
+  const selected = Boolean(state.filters[key]);
+  const chip = node(selected ? "button" : "span", label, `context-chip ${className}${selected ? " removable" : ""}`);
+  if (selected) {
+    chip.type = "button";
+    chip.setAttribute("aria-label", `Remover filtro: ${label}`);
+    const close = node("span", "×", "chip-remove");
+    close.setAttribute("aria-hidden", "true");
+    chip.append(close);
+    chip.addEventListener("click", () => applyFilters({ ...state.filters, [key]: "" }, true));
+  }
+  return chip;
+}
+async function applyFilters(filters, focusSummary = false) {
+  if (state.busy || !state.ready) return;
+  state.filters = { ...filters };
+  $("mes").value = filters.mes;
+  $("unidade").value = filters.unidade;
+  const loaded = await load();
+  if (loaded && focusSummary) $("panorama").focus({ preventScroll: true });
+}
+function unitKey(code, name) {
+  return [...$("unidade").options].find((option) => {
+    if (!option.value) return false;
+    try {
+      const pair = JSON.parse(option.value);
+      return String(pair[0] ?? "") === String(code ?? "") && String(pair[1] ?? "") === String(name ?? "");
+    } catch { return false; }
+  })?.value;
+}
 function emptyChart(element, message = "Não há registros para desenhar este gráfico.") {
   element.replaceChildren(node("p", message, "empty-chart"));
 }
+function describeRecorte(summary, ranking, monthly, filters) {
+  if (!summary.registros) return ["Nenhum registro neste recorte.", "Experimente outra combinação de unidade e mês."];
+  if (!hasMoney(summary.total_centavos)) return ["Há registros, mas nenhum ValorPago disponível.", "Os valores ausentes não foram tratados como zero."];
+  if (summary.registros_sem_valor || summary.registros_sem_mes) return ["Este recorte tem dados incompletos.", "Confira o aviso de cobertura antes de comparar os valores disponíveis."];
+  if (summary.total_centavos === 0) return ["O saldo líquido deste recorte é zero.", "Há registros: valores zero ou compensações podem formar esse resultado."];
+  if (summary.total_centavos < 0) return ["O recorte apresenta saldo líquido negativo.", "Os valores negativos foram preservados na soma. Consulte os registros de origem."];
+  const readings = [];
+  if (!filters.unidade && ranking.length >= 3) {
+    const firstThree = ranking.slice(0, 3);
+    const share = firstThree.reduce((total, row) => total + row.total_centavos, 0) / summary.total_centavos;
+    if (firstThree.every((row) => hasMoney(row.total_centavos) && row.total_centavos >= 0) && share <= 1) {
+      readings.push(`As 3 primeiras unidades concentram ${percent.format(share)} do total líquido.`);
+    }
+  }
+  const measured = monthly.filter((row) => row.registros > 0 && hasMoney(row.total_centavos));
+  if (!filters.mes && measured.length > 1) {
+    const peak = measured.reduce((best, row) => row.total_centavos > best.total_centavos ? row : best);
+    const share = peak.total_centavos / summary.total_centavos;
+    if (share > 0 && share <= 1) readings.push(`${peak.nome} reúne ${percent.format(share)} do total líquido do recorte.`);
+  }
+  return readings.length ? readings : ["Consulta pronta para conferência.", "Os registros e as exportações abaixo correspondem ao recorte aplicado."];
+}
+function renderReading(summary, ranking, monthly) {
+  $("leitura-recorte").replaceChildren(...describeRecorte(summary, ranking, monthly, state.filters).map((text, index) => node(index ? "span" : "strong", text)));
+}
+function updatePresentation() {
+  const active = document.body.classList.contains("presentation-mode");
+  $("modo-apresentacao").setAttribute("aria-pressed", String(active));
+  $("modo-apresentacao").textContent = active ? "Sair da apresentação" : "Modo apresentação";
+  const count = $("ranking").querySelectorAll(".ranking-row").length;
+  const limit = active ? 5 : 10;
+  const label = $("ranking").dataset.hasValues === "false" ? "unidades exibidas" : "maiores unidades";
+  $("ranking-limite").textContent = count ? `${Math.min(count, limit)} ${count === 1 ? "unidade" : label}` : "Sem registros";
+}
 function renderRanking(rows) {
   const container = $("ranking");
+  container.dataset.hasValues = String(rows.some((row) => hasMoney(row.total_centavos)));
   container.replaceChildren();
   if (!rows.length) {
     insight("ranking-destaque", "Recorte consultado", "Sem registros", "Escolha outra unidade ou mês.");
@@ -115,21 +186,32 @@ function renderRanking(rows) {
   const hasNegative = measured.some((row) => row.total_centavos < 0);
   const max = Math.max(...measured.map((row) => Math.abs(row.total_centavos)), 1);
   rows.forEach((row, index) => {
-    const wrapper = node("div", undefined, "ranking-row");
+    const wrapper = node("button", undefined, "ranking-row");
+    wrapper.type = "button";
+    const key = unitKey(row.codigo, row.nome);
+    wrapper.dataset.unavailable = String(key === undefined);
+    wrapper.disabled = key === undefined;
+    wrapper.setAttribute("aria-label", `${row.nome || "Unidade não informada"}: ${formatMoney(row.total_centavos)}. Explorar esta unidade.`);
+    wrapper.title = "Explorar esta unidade no mês consultado";
+    wrapper.addEventListener("click", () => {
+      if (key !== undefined) applyFilters({ mes: state.filters.mes, unidade: key }, true);
+    });
     wrapper.append(node("span", String(index + 1).padStart(2, "0"), "rank-number"));
-    const content = node("div", undefined, "rank-content");
-    const top = node("div", undefined, "rank-top");
+    const content = node("span", undefined, "rank-content");
+    const top = node("span", undefined, "rank-top");
     const name = node("span", row.nome || "Unidade não informada", "rank-name");
     name.title = `${row.codigo || "Sem código"} · ${row.nome || "Unidade não informada"}${row.registros_sem_valor ? ` · ${integer.format(row.registros_sem_valor)} registro(s) sem ValorPago` : ""}`;
     const value = node("span", formatMoney(row.total_centavos), "rank-value");
     if (row.total_centavos < 0) value.classList.add("negative-value");
     top.append(name, value);
-    const track = node("div", undefined, "rank-track");
+    const track = node("span", undefined, "rank-track");
     track.setAttribute("aria-hidden", "true");
     const fill = node("span", undefined, `rank-fill${row.total_centavos < 0 ? " negative" : ""}`);
     const width = hasMoney(row.total_centavos) ? Math.abs(row.total_centavos) / max * (hasNegative ? 50 : 100) : 0;
     fill.style.width = `${width}%`;
     fill.style.left = `${hasNegative ? row.total_centavos < 0 ? 50 - width : 50 : 0}%`;
+    fill.style.setProperty("--bar-origin", row.total_centavos < 0 ? "right" : "left");
+    fill.style.setProperty("--bar-delay", `${index * 30}ms`);
     track.append(fill);
     if (!hasMoney(row.total_centavos)) track.hidden = true;
     if (hasNegative) { const baseline = node("span", undefined, "rank-baseline"); baseline.style.left = "50%"; track.append(baseline); }
@@ -144,13 +226,54 @@ function svgNode(tag, attributes = {}, text) {
   if (text !== undefined) element.textContent = text;
   return element;
 }
+function hideTooltip() {
+  const tooltip = $("chart-tooltip");
+  if (tooltip) tooltip.hidden = true;
+  dismissActiveTooltip = null;
+}
+function monthlyTooltip(group, row) {
+  let pointerInside = false;
+  let dismissed = false;
+  function show(event) {
+    if (state.busy || dismissed) return;
+    let tooltip = $("chart-tooltip");
+    if (!tooltip) {
+      tooltip = node("div", undefined, "chart-tooltip");
+      tooltip.id = "chart-tooltip";
+      tooltip.setAttribute("aria-hidden", "true");
+      document.body.append(tooltip);
+    }
+    const detail = row.registros === 0 ? "Sem registros neste mês" : `${integer.format(row.registros)} registro(s) no mês`;
+    tooltip.replaceChildren(node("span", `${row.nome} · 2024`, "tooltip-month"), node("strong", formatMoney(row.total_centavos), "tooltip-value"), node("span", detail, "tooltip-detail"));
+    if (row.registros_sem_valor) tooltip.append(node("span", `${integer.format(row.registros_sem_valor)} sem ValorPago válido`, "tooltip-hint"));
+    tooltip.hidden = false;
+    dismissActiveTooltip = () => { dismissed = true; hideTooltip(); };
+    const bounds = group.getBoundingClientRect();
+    const x = event?.clientX ?? (bounds.left + bounds.width / 2);
+    const y = event?.clientY ?? bounds.top;
+    const box = tooltip.getBoundingClientRect();
+    tooltip.style.left = `${Math.max(12, Math.min(x - box.width / 2, window.innerWidth - box.width - 12))}px`;
+    tooltip.style.top = `${Math.max(12, Math.min(y < box.height + 24 ? y + 20 : y - box.height - 16, window.innerHeight - box.height - 12))}px`;
+  }
+  group.addEventListener("pointerenter", (event) => { pointerInside = true; dismissed = false; show(event); });
+  group.addEventListener("pointermove", show);
+  group.addEventListener("pointerleave", () => { pointerInside = false; if (document.activeElement !== group) hideTooltip(); });
+  group.addEventListener("focus", () => { dismissed = false; show(); });
+  group.addEventListener("blur", () => { if (!pointerInside) hideTooltip(); });
+  group.addEventListener("keydown", (event) => { if (event.key === "Escape") { dismissed = true; hideTooltip(); } });
+}
 function renderMonthly(rows) {
+  hideTooltip();
   const container = $("mensal");
   const table = $("mensal-tabela");
   const peakLegend = document.querySelector(".chart-legend .peak")?.parentElement;
   if (peakLegend) peakLegend.hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0 && hasMoney(row.total_centavos));
   const unavailableLegend = document.querySelector(".chart-legend .unavailable")?.parentElement;
   if (unavailableLegend) unavailableLegend.hidden = !rows.some((row) => row.registros > 0 && !hasMoney(row.total_centavos));
+  for (const [selector, visible] of [[".negative", rows.some((row) => hasMoney(row.total_centavos) && row.total_centavos < 0)], [".missing", rows.some((row) => row.registros === 0)]]) {
+    const legend = document.querySelector(`.chart-legend ${selector}`)?.parentElement;
+    if (legend) legend.hidden = !visible;
+  }
   container.classList.toggle("is-single-month", Boolean(state.filters.mes));
   if ($("mensal-deslize")) $("mensal-deslize").hidden = Boolean(state.filters.mes) || !rows.some((row) => row.registros > 0 && hasMoney(row.total_centavos));
   table.replaceChildren();
@@ -179,33 +302,37 @@ function renderMonthly(rows) {
   const values = rows.filter((row) => hasMoney(row.total_centavos)).map((row) => row.total_centavos);
   let high = Math.max(0, ...values), low = Math.min(0, ...values);
   if (high === 0 && low === 0) high = 100;
-  const range = high - low;
-  if (high > 0) high += range * 0.08;
-  if (low < 0) low -= range * 0.08;
+  const rawStep = (high - low) / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const tickStep = [1, 2, 2.5, 5, 10].find((step) => step * magnitude >= rawStep) * magnitude;
+  high = Math.ceil(high / tickStep) * tickStep;
+  low = Math.floor(low / tickStep) * tickStep;
   const scale = (value) => bottom - ((value - low) / (high - low)) * (bottom - top);
   const baseline = scale(0);
   const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, role: "group", class: "monthly-svg", "aria-labelledby": "mensal-titulo-svg mensal-desc-svg" });
   svg.append(svgNode("title", { id: "mensal-titulo-svg" }, "Total pago líquido por mês"));
   svg.append(svgNode("desc", { id: "mensal-desc-svg" }, rows.map((row) => `${row.nome}: ${formatMoney(row.total_centavos)}, ${row.registros} registros`).join(". ")));
-  for (let index = 0; index <= 4; index++) {
-    const value = low + (high - low) * index / 4;
+  const tickCount = Math.round((high - low) / tickStep);
+  for (let index = 0; index <= tickCount; index++) {
+    const value = low + tickStep * index;
     const y = scale(value);
-    svg.append(svgNode("line", { x1: left, x2: width - right, y1: y, y2: y, stroke: "#e4ede8", "stroke-dasharray": "3 4" }));
-    svg.append(svgNode("text", { x: left - 10, y: y + 5, "text-anchor": "end", fill: "#627783", "font-size": 16 }, compact.format(value / 100)));
+    svg.append(svgNode("line", { x1: left, x2: width - right, y1: y, y2: y, stroke: "var(--line)", "stroke-dasharray": "3 4" }));
+    svg.append(svgNode("text", { x: left - 10, y: y + 5, "text-anchor": "end", fill: "var(--muted)", "font-size": 16 }, compact.format(value / 100)));
   }
-  svg.append(svgNode("line", { x1: left, x2: width - right, y1: baseline, y2: baseline, stroke: "#9db9ac" }));
+  svg.append(svgNode("line", { x1: left, x2: width - right, y1: baseline, y2: baseline, stroke: "var(--muted)" }));
   const step = (width - left - right) / rows.length;
   rows.forEach((row, index) => {
     const x = left + index * step + step * 0.21;
     const isPeak = !state.filters.mes && row === peak;
     const label = `${row.nome}: ${formatMoney(row.total_centavos)} · ${integer.format(row.registros)} registro(s)${row.registros === 0 ? " · sem registros" : ""}${row.registros_sem_valor ? ` · ${integer.format(row.registros_sem_valor)} sem ValorPago válido` : ""}`;
     const group = svgNode("g", { class: "bar-group", tabindex: "0", role: "img", "aria-label": label });
-    group.append(svgNode("title", {}, label));
+    group.append(svgNode("rect", { x: left + index * step, y: top, width: step, height: bottom - top, class: "bar-hit", fill: "transparent", "pointer-events": "all" }));
+    monthlyTooltip(group, row);
     if (!hasMoney(row.total_centavos)) {
-      group.append(svgNode("line", { x1: x, x2: x + step * 0.58, y1: baseline, y2: baseline, class: "unavailable-marker", stroke: "#718798", "stroke-width": 2, "stroke-dasharray": "3 2" }));
+      group.append(svgNode("line", { x1: x, x2: x + step * 0.58, y1: baseline, y2: baseline, class: "unavailable-marker", stroke: "var(--muted)", "stroke-width": 2, "stroke-dasharray": "3 2" }));
       group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top, baseline - 8), "text-anchor": "middle", class: "unavailable-label" }, "—"));
       svg.append(group);
-      svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "#4f6878", "font-size": 16 }, row.nome.slice(0, 3)));
+      svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "var(--muted)", "font-size": 16 }, row.nome.slice(0, 3)));
       return;
     }
     const y = scale(row.total_centavos);
@@ -213,11 +340,13 @@ function renderMonthly(rows) {
     const bar = svgNode("rect", { x, y: row.total_centavos >= 0 ? y : baseline,
       width: step * 0.58, height: Math.max(barHeight, 1), rx: Math.min(3, barHeight / 2),
       class: `month-bar${isPeak ? " is-peak" : ""}${row.total_centavos < 0 ? " is-negative" : ""}${row.registros === 0 ? " is-missing" : ""}`,
-      fill: row.total_centavos < 0 ? "#b34740" : row.registros === 0 ? "#d5e1da" : isPeak ? "#087d73" : "#274f60" });
+      fill: row.total_centavos < 0 ? "var(--negative)" : row.registros === 0 ? "var(--line)" : isPeak ? "var(--accent)" : "var(--navy-soft)" });
+    bar.style.setProperty("--bar-origin", row.total_centavos < 0 ? "center top" : "center bottom");
+    bar.style.setProperty("--bar-delay", `${index * 25}ms`);
     group.append(bar);
-    if (isPeak) group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top - 10, y - 10), "text-anchor": "middle", class: `peak-label${row.total_centavos < 0 ? " negative-value" : ""}`, fill: row.total_centavos < 0 ? "#b34740" : "#087E8B", "font-size": 14, "font-weight": 700 }, compact.format(row.total_centavos / 100)));
+    if (isPeak) group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top - 10, y - 10), "text-anchor": "middle", class: `peak-label${row.total_centavos < 0 ? " negative-value" : ""}`, fill: row.total_centavos < 0 ? "var(--negative)" : "var(--accent-dark)", "font-size": 14, "font-weight": 700 }, compact.format(row.total_centavos / 100)));
     svg.append(group);
-    svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "#4f6878", "font-size": 16 }, row.nome.slice(0, 3)));
+    svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "var(--muted)", "font-size": 16 }, row.nome.slice(0, 3)));
   });
   container.append(svg);
 }
@@ -258,11 +387,14 @@ async function load(page = 1, full = true) {
       const [summary, ranking, monthly, records] = await Promise.all([
         request("/api/resumo"), request("/api/ranking"), request("/api/mensal"), request("/api/registros", { pagina: page })]);
       renderSummary(summary); renderRanking(ranking.linhas); renderMonthly(monthly.linhas); renderRecords(records); updateDownloads();
+      renderReading(summary, ranking.linhas, monthly.linhas); updatePresentation();
     } else renderRecords(await request("/api/registros", { pagina: page }));
     $("resultados").hidden = false;
     state.failed = false;
     updateConsultationStatus();
     updateNavigation();
+    document.dispatchEvent(new CustomEvent("pagamentos:updated", { detail: { full } }));
+    return true;
   } catch (error) {
     if (error.name !== "AbortError") {
       state.failed = true;
@@ -274,6 +406,7 @@ async function load(page = 1, full = true) {
       $("recorte").textContent = "Consulta não concluída. Tente novamente.";
       consultationStatus("Consulta não concluída", "error");
     }
+    return false;
   } finally { if (state.controller === current) busy(false); }
 }
 async function initialize() {
@@ -286,6 +419,11 @@ async function initialize() {
     $("unidade").replaceChildren(new Option("Todas as unidades", ""));
     options.meses.forEach((month) => $("mes").add(new Option(month.nome, String(month.valor))));
     options.unidades.forEach((unit) => $("unidade").add(new Option(`${unit.codigo || "Sem código"} · ${unit.nome}`, unit.chave)));
+    for (const [id, code, name] of [["exemplo-saude", "440901", "FUNDO ESTADUAL DE SAÚDE"], ["exemplo-penal", "460113", "POLÍCIA PENAL DO ESPIRITO SANTO"]]) {
+      const unit = options.unidades.find((row) => String(row.codigo) === code && row.nome === name);
+      $(id).dataset.unit = unit?.chave || "";
+      $(id).hidden = !unit;
+    }
     state.ready = true;
     await load();
   } catch (error) {
@@ -298,11 +436,31 @@ async function initialize() {
     busy(false);
   }
 }
-$("filtros").addEventListener("submit", (event) => { event.preventDefault(); state.filters = { mes: $("mes").value, unidade: $("unidade").value }; load(); });
-$("limpar").addEventListener("click", () => { $("mes").value = ""; $("unidade").value = ""; state.filters = { mes: "", unidade: "" }; load(); });
+$("filtros").addEventListener("submit", (event) => { event.preventDefault(); applyFilters({ mes: $("mes").value, unidade: $("unidade").value }); });
+$("limpar").addEventListener("click", () => applyFilters({ mes: "", unidade: "" }));
 $("anterior").addEventListener("click", () => load(state.page - 1, false));
 $("proxima").addEventListener("click", () => load(state.page + 1, false));
 $("tentar").addEventListener("click", () => state.ready ? load() : initialize());
+$("modo-apresentacao").addEventListener("click", () => {
+  document.body.classList.toggle("presentation-mode");
+  document.body.classList.remove("filters-expanded");
+  $("abrir-filtros").setAttribute("aria-expanded", "false");
+  $("abrir-filtros").textContent = "Ajustar filtros";
+  updatePresentation();
+  hideTooltip();
+  document.dispatchEvent(new CustomEvent("pagamentos:presentation", { detail: { active: document.body.classList.contains("presentation-mode") } }));
+  window.scrollTo({ top: 0, behavior: "instant" });
+});
+$("abrir-filtros").addEventListener("click", () => {
+  const expanded = document.body.classList.toggle("filters-expanded");
+  $("abrir-filtros").setAttribute("aria-expanded", String(expanded));
+  $("abrir-filtros").textContent = expanded ? "Recolher filtros" : "Ajustar filtros";
+  if (expanded) $("unidade").focus();
+});
+$("exemplo-panorama").addEventListener("click", () => $("limpar").click());
+for (const [id, month] of [["exemplo-saude", "12"], ["exemplo-penal", "1"]]) $(id).addEventListener("click", () => {
+  applyFilters({ mes: month, unidade: $(id).dataset.unit });
+});
 for (const id of ["mes", "unidade"]) $(id).addEventListener("change", updateConsultationStatus);
 function updateNavigation() {
   const links = [...document.querySelectorAll(".sidebar nav a")];
@@ -323,5 +481,10 @@ window.addEventListener("scroll", () => {
   requestAnimationFrame(() => { navigationQueued = false; updateNavigation(); });
 }, { passive: true });
 window.addEventListener("resize", updateNavigation);
+window.addEventListener("resize", hideTooltip);
+window.addEventListener("scroll", hideTooltip, { passive: true, capture: true });
+document.addEventListener("pagamentos:loading", (event) => { if (event.detail.active) hideTooltip(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") dismissActiveTooltip?.(); });
+document.addEventListener("pointerdown", (event) => { if (!event.target.closest?.(".bar-group")) hideTooltip(); });
 updateNavigation();
 initialize();

@@ -254,7 +254,8 @@ def make_handler(database=DEFAULT_DATABASE, static_dir=ROOT / "static"):
         def do_GET(self):
             url = urlsplit(self.path)
             static = {"/": "index.html", "/index.html": "index.html",
-                      "/static/style.css": "style.css", "/static/app.js": "app.js"}
+                      "/static/style.css": "style.css", "/static/app.js": "app.js",
+                      "/static/motion.js": "motion.js"}
             if url.path in static:
                 path = Path(static_dir) / static[url.path]
                 try:

@@ -5,47 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Consulta local aos registros de pagamentos públicos do Espírito Santo em 2024.">
   <title>Pagamentos ES 2024</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/app.js" defer></script>
+  <meta name="theme-color" content="#14283F">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%2314283F'/%3E%3Cpath d='M12 13h40v5H12z' fill='%232563EB'/%3E%3Ctext x='32' y='46' fill='white' font-family='Arial,sans-serif' font-size='29' font-weight='700' text-anchor='middle'%3EES%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css?v=corporativo-1">
+  <script src="/static/app.js?v=corporativo-1" defer></script>
+  <script src="/static/motion.js?v=corporativo-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
   <aside class="sidebar" aria-label="Navegação do painel">
-    <div class="sidebar-brand"><span class="brand-rule" aria-hidden="true"></span><div><strong>Pagamentos ES</strong><span>Transparência pública</span></div></div>
-    <div class="sidebar-year"><span>BASE DE REFERÊNCIA</span><strong>2024</strong></div>
+    <a class="sidebar-brand" href="#conteudo" aria-label="Pagamentos ES, início"><span class="brand-monogram" aria-hidden="true">ES</span><span class="brand-wordmark"><strong>Pagamentos ES</strong><span>Análise de dados públicos</span></span></a>
+    <div class="sidebar-year"><span>BASE DE REFERÊNCIA</span><strong>Espírito Santo</strong><span class="sidebar-edition">Exercício 2024</span></div>
     <nav aria-label="Seções do painel">
-      <a href="#panorama"><span class="nav-number" aria-hidden="true">01</span>Visão geral</a>
-      <a href="#analises"><span class="nav-number" aria-hidden="true">02</span>Distribuição</a>
-      <a href="#registros-secao"><span class="nav-number" aria-hidden="true">03</span>Registros</a>
-      <a href="#metodologia"><span class="nav-number" aria-hidden="true">04</span>Metodologia</a>
+      <a href="#panorama"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Visão geral</span><span class="nav-number" aria-hidden="true">01</span></a>
+      <a href="#analises"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10m8 10V4m8 16V8"/></svg><span>Distribuição</span><span class="nav-number" aria-hidden="true">02</span></a>
+      <a href="#registros-secao"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3h10l4 4v14H5zM14 3v5h5M9 12h6M9 16h6"/></svg><span>Registros</span><span class="nav-number" aria-hidden="true">03</span></a>
+      <a href="#metodologia"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg><span>Metodologia</span><span class="nav-number" aria-hidden="true">04</span></a>
     </nav>
-    <div class="sidebar-note"><p>Dados com origem verificável.</p><span>Recorte fornecido na atividade.<br>Espírito Santo · 2024</span></div>
-    <div class="sidebar-footer"><span class="local-marker" aria-hidden="true"></span> Consulta local</div>
+    <div class="sidebar-note"><span class="sidebar-note-label">RECURSOS DO PAINEL</span><p>Consulta e rastreabilidade</p><span>Filtros por mês e unidade<br>Origem identificada por registro<br>Exportação dos resultados</span></div>
+    <div class="sidebar-footer"><span class="local-marker" aria-hidden="true"></span><span>Consulta local<span class="sidebar-footer-detail">Base fornecida na atividade</span></span></div>
   </aside>
   <header class="topbar">
-    <div class="brand"><span>Pagamentos <strong>ES 2024</strong></span></div>
-    <div class="breadcrumb"><span>Dados públicos</span><span aria-hidden="true">/</span><strong>Painel de pagamentos</strong></div>
-    <div class="header-meta"><span class="status-dot" aria-hidden="true"></span> Espírito Santo <span class="divider">·</span> 2024</div>
+    <div class="brand"><span class="mobile-monogram" aria-hidden="true">ES</span><span>Pagamentos <strong>2024</strong></span></div>
+    <div class="breadcrumb"><span class="breadcrumb-line" aria-hidden="true"></span><span>PAGAMENTOS ES</span><span aria-hidden="true">/</span><strong>Painel analítico</strong></div>
+    <div class="header-actions"><div class="header-meta"><span class="status-dot" aria-hidden="true"></span> Espírito Santo <span class="divider">·</span> 2024</div><button id="modo-apresentacao" class="presentation-toggle" type="button" aria-pressed="false">Modo apresentação</button></div>
   </header>
   <main id="conteudo">
-    <section class="intro">
-      <p class="eyebrow">ANÁLISE DE DESPESAS PÚBLICAS</p>
-      <h1>Pagamentos ES 2024</h1>
-      <p class="intro-copy">Compare unidades gestoras, acompanhe os meses e confira os registros que formam cada resultado.</p>
-      <div class="intro-tags"><span>Recorte de 2024</span><span>Dados fornecidos na atividade</span><a href="#metodologia">Entenda a metodologia</a></div>
+    <section class="intro reveal" data-reveal aria-labelledby="painel-titulo">
+      <div class="hero-copy">
+        <p class="eyebrow"><span aria-hidden="true"></span> PAINEL DE ANÁLISE · ESPÍRITO SANTO</p>
+        <h1 id="painel-titulo">Análise de pagamentos públicos</h1>
+        <p class="intro-copy">Consulte os valores registrados, compare unidades gestoras e acompanhe a distribuição mensal com acesso à origem dos dados.</p>
+        <div class="intro-tags"><a href="#panorama">Ver indicadores <span aria-hidden="true">↓</span></a><a href="#metodologia">Critérios da análise</a></div>
+      </div>
+      <div class="hero-aside"><span class="hero-edition">ESCOPO DA CONSULTA</span><dl class="hero-metadata"><div><dt>Exercício</dt><dd>2024</dd></div><div><dt>Abrangência</dt><dd>Base fornecida</dd></div><div><dt>Referência</dt><dd>Data do registro</dd></div></dl><span class="hero-note">A análise descreve os arquivos da atividade. A cobertura estadual não é presumida.</span></div>
     </section>
 
-    <section class="filter-card" aria-labelledby="filtros-titulo">
-      <div class="filter-head"><div><h2 id="filtros-titulo">Refine sua consulta</h2><p>Indicadores, gráficos e exportações acompanham os filtros aplicados.</p></div></div>
+    <section class="filter-card reveal" data-reveal aria-labelledby="filtros-titulo">
+      <div class="filter-head"><div><h2 id="filtros-titulo">Filtros da consulta</h2><p>Selecione a unidade e o mês para atualizar os indicadores e as exportações.</p></div><svg class="filter-symbol" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></svg></div>
       <form id="filtros">
         <label class="unit-filter">Unidade gestora<select id="unidade" name="unidade" disabled><option value="">Todas as unidades</option></select></label>
         <label>Mês do registro<select id="mes" name="mes" disabled><option value="">Todos os meses</option></select></label>
         <button id="aplicar" type="submit" class="primary" disabled>Consultar</button>
         <button id="limpar" type="button" class="secondary" disabled>Limpar</button>
       </form>
+      <div class="example-queries" aria-label="Consultas de exemplo"><span>Explore um recorte</span><button id="exemplo-saude" type="button" disabled>Saúde em dezembro <span aria-hidden="true">↗</span></button><button id="exemplo-penal" type="button" disabled>Polícia Penal em janeiro <span aria-hidden="true">↗</span></button><button id="exemplo-panorama" type="button" disabled>Panorama completo</button><button id="abrir-filtros" class="filter-disclosure" type="button" aria-controls="filtros" aria-expanded="false">Ajustar filtros</button></div>
     </section>
 
-    <div class="result-head" id="panorama"><div><p class="section-kicker">VISÃO GERAL</p><h2>Resumo da consulta</h2></div><p id="consulta-status" class="consulta-status" role="status" aria-live="polite" data-state="loading">Carregando a base…</p></div>
+    <div class="result-head" id="panorama" tabindex="-1"><div><p class="section-kicker">VISÃO GERAL</p><h2>Resumo da consulta</h2></div><p id="consulta-status" class="consulta-status" role="status" aria-live="polite" data-state="loading">Carregando a base…</p></div>
     <div id="filtros-aplicados" class="applied-filters" aria-label="Filtros aplicados"><span class="context-chip">2024</span><span class="context-chip">Todos os meses</span><span class="context-chip unit-chip">Todas as unidades</span></div>
     <p id="recorte" class="scope-description">Carregando a base de 2024…</p>
     <div id="alerta" class="alert" role="status" aria-live="polite" hidden></div>
@@ -53,23 +60,25 @@
     <div id="erro" class="alert error" role="alert" hidden><span id="erro-texto"></span><button id="tentar" type="button">Tentar novamente</button></div>
     <section id="resultados" aria-busy="true">
       <div class="kpi-grid">
-        <article class="kpi highlight"><p>Total pago líquido registrado</p><strong id="total">—</strong><span>Soma de ValorPago, incluindo negativos</span><span class="kpi-footnote">No recorte selecionado</span></article>
-        <article class="kpi"><p>Registros no recorte</p><strong id="registros">—</strong><span id="zeros">Linhas da base de despesas</span></article>
-        <article class="kpi"><p>Unidades gestoras</p><strong id="unidades">—</strong><span>Código e nome considerados em conjunto</span></article>
-        <article class="kpi"><p>Registros negativos</p><strong id="ajustes">—</strong><span id="ajustes-valor">Mantidos no total líquido</span></article>
+        <article class="kpi highlight reveal" data-reveal><div class="kpi-heading"><p>Total pago líquido registrado</p><span class="kpi-index" aria-hidden="true">R$</span></div><strong id="total">—</strong><span>Soma de ValorPago, incluindo negativos</span><span class="kpi-footnote"><i aria-hidden="true"></i>No recorte selecionado</span></article>
+        <article class="kpi reveal" data-reveal style="--reveal-delay:60ms"><div class="kpi-heading"><p>Registros no recorte</p><span class="kpi-index" aria-hidden="true">01</span></div><strong id="registros">—</strong><span id="zeros">Linhas da base de despesas</span></article>
+        <article class="kpi reveal" data-reveal style="--reveal-delay:120ms"><div class="kpi-heading"><p>Unidades gestoras</p><span class="kpi-index" aria-hidden="true">02</span></div><strong id="unidades">—</strong><span>Código e nome considerados em conjunto</span></article>
+        <article class="kpi reveal" data-reveal style="--reveal-delay:180ms"><div class="kpi-heading"><p>Registros negativos</p><span class="kpi-index" aria-hidden="true">03</span></div><strong id="ajustes">—</strong><span id="ajustes-valor">Mantidos no total líquido</span></article>
       </div>
+
+      <div class="analysis-brief" aria-labelledby="leitura-titulo"><p id="leitura-titulo" class="section-kicker">LEITURA DO RECORTE</p><p id="leitura-recorte" aria-live="polite">Os destaques aparecem após a consulta.</p></div>
 
       <div class="section-heading" id="analises"><div><p class="section-kicker">DISTRIBUIÇÃO DOS VALORES</p><h2>Distribuição dos pagamentos</h2></div><p>Valores por unidade gestora e mês.</p></div>
       <div class="charts-grid">
-        <article class="panel ranking-panel">
-          <div class="panel-head"><div><p class="panel-kicker">POR UNIDADE GESTORA</p><h3>Onde se concentram os pagamentos?</h3></div><span class="small-pill">Até 10 unidades</span></div>
+        <article class="panel ranking-panel reveal" data-reveal>
+          <div class="panel-head"><div><p class="panel-kicker">POR UNIDADE GESTORA</p><h3>Concentração dos pagamentos</h3></div><span id="ranking-limite" class="small-pill">Até 10 unidades</span></div>
           <p class="chart-description">Ordenadas pela soma líquida registrada, da maior para a menor.</p>
           <div id="ranking-destaque" class="chart-insight"><span class="insight-label">Maior unidade no recorte</span><strong class="insight-value">—</strong><span class="insight-detail">Aguardando consulta</span></div>
           <div id="ranking" class="ranking" aria-label="Ranking de unidades gestoras"></div>
           <a id="exportar-ranking" class="export-link" href="/api/exportar?tipo=ranking">↓ Exportar ranking completo</a>
         </article>
-        <article class="panel monthly-panel">
-          <div class="panel-head"><div><p class="panel-kicker">POR MÊS DO REGISTRO</p><h3>Como os valores mudam no ano?</h3></div></div>
+        <article class="panel monthly-panel reveal" data-reveal style="--reveal-delay:90ms">
+          <div class="panel-head"><div><p class="panel-kicker">POR MÊS DO REGISTRO</p><h3>Evolução mensal dos pagamentos</h3></div></div>
           <p id="mensal-descricao" class="chart-description">Meses de 2024, conforme a data de referência de cada registro.</p>
           <div id="mensal-destaque" class="chart-insight"><span class="insight-label">Maior mês no recorte</span><strong class="insight-value">—</strong><span class="insight-detail">Aguardando consulta</span></div>
           <div id="mensal" class="monthly-chart" aria-label="Pagamentos por mês"></div>
@@ -80,16 +89,16 @@
         </article>
       </div>
 
-      <section class="panel records-panel" id="registros-secao" aria-labelledby="registros-titulo">
-        <div class="panel-head"><div><p class="panel-kicker">ORIGEM VERIFICÁVEL</p><h3 id="registros-titulo">Os registros por trás dos números</h3><p class="chart-description">CSV e linha de origem identificados. A linha 1 corresponde ao cabeçalho.</p></div><a id="exportar-detalhes" class="download-button" href="/api/exportar?tipo=detalhes">Baixar registros filtrados</a></div>
+      <section class="panel records-panel reveal" data-reveal id="registros-secao" aria-labelledby="registros-titulo">
+        <div class="panel-head"><div><p class="panel-kicker">ORIGEM VERIFICÁVEL</p><h3 id="registros-titulo">Registros e rastreabilidade</h3><p class="chart-description">CSV e linha de origem identificados. A linha 1 corresponde ao cabeçalho.</p></div><a id="exportar-detalhes" class="download-button" href="/api/exportar?tipo=detalhes">Baixar registros filtrados</a></div>
         <div class="table-scroll"><table class="records-table"><caption class="sr-only">Registros filtrados com data, unidade gestora, valor pago, documento e origem nos arquivos fornecidos.</caption><thead><tr><th scope="col">Data do registro</th><th scope="col">Unidade gestora</th><th scope="col" class="number">Valor pago</th><th scope="col">Documento</th><th scope="col">Arquivo e linha de origem</th></tr></thead><tbody id="registros-tabela"></tbody></table></div>
         <div class="pagination"><p id="pagina-info">—</p><div><button id="anterior" type="button" class="secondary" disabled>← Anterior</button><span id="pagina-atual">Página 1</span><button id="proxima" type="button" class="secondary" disabled>Próxima →</button></div></div>
       </section>
     </section>
 
-    <section class="methodology" id="metodologia">
+    <section class="methodology reveal" data-reveal id="metodologia">
       <details open>
-        <summary><span>Antes de interpretar os números</span><span class="method-arrow" aria-hidden="true">+</span></summary>
+        <summary><span>Critérios e limites da análise</span><span class="method-arrow" aria-hidden="true">+</span></summary>
         <div class="method-grid">
           <div><h3>O que está sendo somado?</h3><p>O campo <strong>ValorPago</strong>, em reais. Os valores são armazenados e somados em centavos inteiros para evitar erros de arredondamento. Valores negativos e zeros são preservados. O total líquido incorpora os valores negativos registrados.</p></div>
           <div><h3>Que período aparece aqui?</h3><p>O recorte usa <strong>Data</strong> como referência da realização da despesa no ano de 2024. “Data do registro” não comprova a data de transferência bancária. Os meses são meses do calendário; o filtro escolhe um mês por vez.</p></div>
@@ -99,7 +108,7 @@
         <p class="privacy-note">A interface e as exportações não exibem CPF/CNPJ de favorecidos ou informações bancárias. A base local contém apenas os campos necessários ao painel.</p>
       </details>
     </section>
-    <footer><span>Pagamentos ES 2024 · Prova de conceito acadêmica</span><span>Dados: arquivos de despesas ES fornecidos pelo professor · Recorte 2024</span></footer>
+    <footer><span class="footer-signature"><span aria-hidden="true">ES</span> Pagamentos 2024</span><span>Prova de conceito acadêmica.<br>Arquivos de despesas fornecidos pelo professor.</span><a href="#conteudo">Voltar ao início <span aria-hidden="true">↑</span></a></footer>
   </main>
 </body>
 </html>

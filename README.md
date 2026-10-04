@@ -5,7 +5,8 @@ Turma **2ESPH-2026**. [Repositório de código e materiais](https://github.com/S
 - [Relatório técnico de 8 páginas](docs/relatorio_pagamentos_es_2024.pdf)
 - [Apresentação editável de 8 slides](docs/apresentacao_pagamentos_es_2024.pptx)
 - [Apresentação em PDF](docs/apresentacao_pagamentos_es_2024.pdf)
-- [Roteiro de 12 minutos para quatro integrantes](docs/guia_apresentacao_pagamentos_es_2024.pdf)
+- [Roteiro de 11 minutos e 1 minuto de margem para quatro integrantes](docs/guia_apresentacao_pagamentos_es_2024.pdf)
+- [Captura do painel para contingência](docs/previa_painel.jpg)
 - [Conferência da entrega](VALIDACAO.md)
 
 | Integrante | RM | Papel proposto | Dedicação estimada no ciclo de 16 semanas | Entregável proposto |
@@ -27,7 +28,7 @@ Prova de conceito acadêmica para investigar os pagamentos registrados nos quatr
 2. No Windows, dê dois cliques em **iniciar.bat**. O navegador abre em **http://127.0.0.1:8765**.
 3. Deixe a janela da aplicação aberta durante o uso. Para encerrar, pressione **Ctrl+C** nessa janela.
 
-Requer **Python 3.10 ou superior**. Não precisa instalar bibliotecas, fazer login ou usar internet. O iniciador tenta `py -3`, depois `python` e, como alternativa neste computador, o Python do ambiente Codex. Em outro computador, use Python instalado normalmente.
+Requer **Python 3.10 ou superior**. Não precisa instalar bibliotecas, fazer login ou usar internet. O iniciador verifica a versão disponível, tenta `py -3`, depois `python` e, como alternativa, o Python do ambiente Codex na pasta do usuário. Em outro computador, use Python instalado normalmente. Teste a pasta extraída no equipamento da apresentação antes da aula.
 
 Alternativa pelo terminal, na pasta do projeto:
 
@@ -41,12 +42,20 @@ O projeto inclui a base pronta compactada `data/pagamentos_2024.sqlite3.gz`. Na 
 
 ## O que demonstrar
 
+O painel adota identidade corporativa: marinho e azul, superfícies brancas sobre fundo cinza-claro, tipografia sem serifa, navegação lateral e cartões com hierarquia visual. As transições de entrada e atualização são curtas; os números sempre aparecem no valor final. A preferência do sistema por movimento reduzido é respeitada. Fontes, ícones e gráficos funcionam sem internet.
+
+Ative **Modo apresentação** no cabeçalho para destacar os indicadores e gráficos. Nesse modo, o ranking mostra até **cinco unidades**, com quantidade explícita; a exportação continua incluindo o ranking completo. Use **Ajustar filtros** para abrir os controles e **Sair da apresentação** para voltar à tela habitual, com até dez unidades. A tabela de registros e a metodologia continuam disponíveis abaixo.
+
+Os atalhos **Saúde em dezembro**, **Polícia Penal em janeiro** e **Panorama completo** aplicam consultas prontas. O texto **Leitura do recorte** acompanha os filtros e destaca a participação das três primeiras unidades e do maior mês quando os dados permitem essa comparação. Dados incompletos, saldo zero, saldo negativo e ausência de registros recebem mensagens próprias. Os percentuais descrevem o total líquido do recorte, sem inferência sobre eficiência ou causalidade.
+
+Clique em uma unidade do ranking para explorá-la, mantendo o mês já consultado. Os filtros aplicados podem ser removidos individualmente pelo **×**. No gráfico mensal, passe o mouse ou navegue pelo teclado para ver o valor exato e a quantidade de registros; **Esc** fecha o detalhe. A tabela mensal oferece os mesmos valores para consulta e acessibilidade.
+
 1. Abra o painel com **Todas as unidades / Todos os meses**: total líquido **R$ 10.337.098.858,62**, **505.950 registros**, **117 unidades gestoras** e **9.886 registros negativos**.
 2. Veja o ranking: Fundo Estadual de Saúde, Fundo Financeiro e Secretaria de Estado da Educação lideram o recorte.
 3. Escolha uma unidade gestora e clique em **Consultar**. Os indicadores, os dois gráficos e a tabela passam a mostrar esse filtro.
 4. Escolha um mês e consulte novamente. O gráfico mensal mostra apenas esse mês. Volte a **Todos os meses** para comparar o calendário.
 5. Confira o nome do CSV e a linha de origem de um registro. Baixe o ranking, a série mensal ou os registros filtrados. As exportações correspondem aos filtros aplicados, e a de registros inclui todas as linhas do recorte, não apenas a página visível.
-6. Use **Limpar** para retornar ao panorama. Para demonstrar ausência de dados, escolha `460113 · POLÍCIA PENAL DO ESPIRITO SANTO` e `Janeiro`; essa combinação foi conferida no banco e na interface e não tem registros na base recebida. Uma soma zero com registros não é ausência de dados.
+6. Use **Limpar** ou **Panorama completo** para retornar ao panorama. Para demonstrar ausência de dados, use o atalho **Polícia Penal em janeiro** ou escolha `460113 · POLÍCIA PENAL DO ESPIRITO SANTO` e `Janeiro`; essa combinação foi conferida no banco e na interface e não tem registros na base recebida. Uma soma zero com registros não é ausência de dados.
 
 As duas perguntas investigadas são **quais unidades gestoras concentram a soma líquida de ValorPago no recorte** e **como essa soma varia entre os meses de 2024**. O painel oferece tabela de origem e exportações para tornar os resultados verificáveis.
 
@@ -78,6 +87,8 @@ Em outro computador, substitua o caminho pela pasta que contém os quatro ZIPs. 
 | `amostra_estatistica.csv` | Amostra interna para reproduzir o exercício estatístico |
 
 Após uma reconstrução, a base `.sqlite3` nova será utilizada pela aplicação. Se for redistribuir a cópia `.gz`, compacte a base atualizada para evitar que versões antigas sejam distribuídas. Não é necessário executar a preparação ao usar a base pronta incluída.
+
+Na preparação, grupos que possuem registros, mas nenhum ValorPago válido, têm total `null` no JSON e célula vazia nos CSVs. Um conjunto sem registros tem contagem e total zero. Meses sem valores disponíveis não entram no cálculo das estatísticas monetárias mensais. Uma reconstrução sem resultados regrava os CSVs somente com os cabeçalhos, evitando que arquivos da carga anterior permaneçam como se fossem atuais.
 
 O processo preserva todas as linhas do recorte, incluindo **156.177 valores positivos, 339.887 zeros e 9.886 negativos**. A carga recebida não apresentou duplicatas completas ou ausências nos campos essenciais. Identificadores repetidos são auditados e não provocam remoção automática de linhas. Outros campos originais podem estar vazios e constam na auditoria dos 71 campos.
 
@@ -128,7 +139,7 @@ Execute os testes na pasta do projeto:
 python -m unittest discover -s tests -v
 ```
 
-Os testes automatizados cobrem centavos e ajustes negativos, zeros, recorte do ano, combinação de filtros, meses sem registros, valores monetários ausentes, registros fora do calendário, ranking e reconciliação, paginação sem perda de linhas, origem verificável e IDs repetidos, consultas inválidas, SQL parametrizado, exportações e proteção contra fórmulas, rotas/erros e recuperação gzip sem sobrescrita ou base parcial. Os testes usam bases pequenas temporárias; não modificam a base entregue. A conferência da versão auditada e as pendências estão em `VALIDACAO.md`.
+Os **27 testes automatizados** cobrem centavos e ajustes negativos, zeros, recorte do ano, combinação de filtros, meses sem registros, valores monetários ausentes, registros fora do calendário, ranking e reconciliação, paginação sem perda de linhas, origem verificável e IDs repetidos, consultas inválidas, SQL parametrizado, exportações e proteção contra fórmulas, rotas/erros e recuperação gzip sem sobrescrita ou base parcial. Seis casos exercitam a preparação completa com quatro ZIPs sintéticos: cargas completas, valores ausentes, estatísticas com um único mês numérico, cargas vazias e substituição de CSVs antigos. Os testes usam bases pequenas temporárias; não modificam a base entregue. A conferência da versão auditada e as pendências estão em `VALIDACAO.md`.
 
 Na base real, o total do painel, a soma de todas as unidades do ranking e a soma dos 12 meses foram conciliados em **1.033.709.885.862 centavos**. A preparação também realiza `PRAGMA integrity_check`. A interface foi conferida no navegador com a base real.
 
@@ -138,14 +149,15 @@ IA foi usada para apoiar a programação, preparar a análise e redigir os mater
 
 A verificação técnica executada incluiu leitura do enunciado e do dicionário, auditoria completa dos quatro CSVs, reconciliação dos totais em centavos, reprodução do sorteio e do intervalo de Wilson, testes automatizados do aplicativo, conferência de registros nos arquivos de origem, inspeção visual dos documentos e consulta da interface com a base real. Essas checagens verificam o resultado técnico; não substituem a revisão de cada integrante.
 
-A revisão humana pelos quatro integrantes, a confirmação dos papéis propostos e o ensaio conjunto de 12 minutos ainda não estão comprovados. Cada pessoa deve revisar seu entregável e preparar a explicação de sua contribuição. A banca pode perguntar sobre a métrica, as limitações, a origem dos registros e a separação entre o recorte sistemático e a amostra aleatória interna.
+A revisão humana pelos quatro integrantes, a confirmação dos papéis propostos e o ensaio conjunto ainda não estão comprovados. O roteiro prevê 11 minutos de conteúdo e 1 minuto de margem dentro do limite de 12 minutos. Cada pessoa deve revisar seu entregável e preparar a explicação de sua contribuição. A banca pode perguntar sobre a métrica, as limitações, a origem dos registros e a separação entre o recorte sistemático e a amostra aleatória interna.
 
 ## Conferência antes da entrega
 
 - Conferir nomes, RMs e turma no relatório, na apresentação e no roteiro final.
 - Revisar e assumir as responsabilidades propostas; a tabela não é um registro de trabalho já realizado.
-- Ensaiar os 12 minutos, incluindo o resultado geral, Saúde em dezembro, rastreabilidade, exportação e Polícia Penal em janeiro sem registros.
-- Conceder acesso à banca ao repositório e aos materiais vinculados ou definir acesso público. A verificação sem login de 03/10/2026 retornou 404 na API do GitHub, enquanto o acesso autenticado funcionou; o acesso da banca ainda não está confirmado. Os links já estão preenchidos, mas isso não comprova que a banca possa abri-los nem que a entrega foi enviada.
+- Ensaiar para 11 minutos, reservando 1 minuto de margem para alternar telas. Incluir resultado geral, Saúde em dezembro, rastreabilidade, exportação e Polícia Penal em janeiro sem registros.
+- Levar o ZIP extraído, os slides em PDF e a captura de contingência; testar a aplicação no computador da apresentação.
+- Conceder acesso à banca ao repositório e aos materiais vinculados ou definir acesso público. A verificação sem login de 04/10/2026 retornou 404 na API do GitHub, enquanto o acesso autenticado funcionou; o acesso da banca ainda não está confirmado. Os links já estão preenchidos, mas isso não comprova que a banca possa abri-los nem que a entrega foi enviada.
 - Entregar PDF e links no canal indicado em aula até **04/10/2026 às 23h59**; apresentação da turma 2ESPH em **06/10/2026**. Todos os integrantes devem comparecer, conforme orientação da atividade.
 
 ## Limites e próximos passos
