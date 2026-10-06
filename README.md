@@ -1,13 +1,29 @@
 # Pagamentos ES 2024
 
-Turma **2ESPH-2026**. [Repositório de código e materiais](https://github.com/Stratfy/cp5-data).
+**CP2 — CPSI simulado · Turma 2ESPH-2026.** [Repositório de código e materiais](https://github.com/Stratfy/cp5-data).
 
+- [Baixar a versão atual do GitHub em ZIP](https://github.com/Stratfy/cp5-data/archive/refs/heads/main.zip)
 - [Relatório técnico de 8 páginas](docs/relatorio_pagamentos_es_2024.pdf)
 - [Apresentação editável de 8 slides](docs/apresentacao_pagamentos_es_2024.pptx)
 - [Apresentação em PDF](docs/apresentacao_pagamentos_es_2024.pdf)
 - [Roteiro de 11 minutos e 1 minuto de margem para quatro integrantes](docs/guia_apresentacao_pagamentos_es_2024.pdf)
-- [Captura do painel para contingência](docs/previa_painel.jpg)
 - [Conferência da entrega](VALIDACAO.md)
+
+O nome do repositório e a marca **cp5.data** foram mantidos; a atividade documentada aqui é o **CP2**.
+
+## Pacote executável
+
+Extraia a pasta inteira antes de abrir os arquivos. Leia as instruções de execução abaixo. Executar a aplicação exige Python 3.10 ou superior; os PDFs podem ser consultados sem instalar Python.
+
+O pacote inclui código-fonte, interface, banco pronto compactado, resultados da análise, testes e materiais. Os quatro ZIPs originais do professor não são necessários para usar a base pronta; para refazer a importação, obtenha esses arquivos pela fonte da atividade. A pasta `.git`, arquivos temporários e bases duplicadas ficam fora da distribuição.
+
+Para gerar novamente o pacote, execute na raiz:
+
+```powershell
+python scripts/empacotar.py
+```
+
+O resultado é `outputs/CP2_Pagamentos_ES_2024.zip`, com uma pasta única e um manifesto SHA-256 dos arquivos. O script verifica o conteúdo gravado no ZIP. Consulte [VALIDACAO.md](VALIDACAO.md) para as verificações executadas nesta versão.
 
 | Integrante | RM | Papel proposto | Dedicação estimada no ciclo de 16 semanas | Entregável proposto |
 |---|---|---|---|---|
@@ -42,24 +58,30 @@ O projeto inclui a base pronta compactada `data/pagamentos_2024.sqlite3.gz`. Na 
 
 ## O que demonstrar
 
-O painel adota identidade corporativa: marinho e azul, superfícies brancas sobre fundo cinza-claro, tipografia sem serifa, navegação lateral e cartões com hierarquia visual. As transições de entrada e atualização são curtas; os números sempre aparecem no valor final. A preferência do sistema por movimento reduzido é respeitada. Fontes, ícones e gráficos funcionam sem internet.
+O painel **cp5.data** tem quatro telas: **Visão geral**, **Distribuição**, **Registros** e **Metodologia**. Uma tela aparece por vez, ocupando a área disponível; a rolagem acontece dentro do conteúdo quando necessário. Use o menu lateral ou os botões **Anterior** e **Próxima: [nome da tela]** no rodapé. **Alt + 1–4** abre diretamente a tela correspondente, exceto enquanto você usa um campo de formulário. Trocar de tela preserva o recorte e os resultados, sem fazer uma nova consulta.
 
-Ative **Modo apresentação** no cabeçalho para destacar os indicadores e gráficos. Nesse modo, o ranking mostra até **cinco unidades**, com quantidade explícita; a exportação continua incluindo o ranking completo. Use **Ajustar filtros** para abrir os controles e **Sair da apresentação** para voltar à tela habitual, com até dez unidades. A tabela de registros e a metodologia continuam disponíveis abaixo.
+Use **Abrir filtros**, no mesmo lugar nas três telas de dados, para escolher unidade gestora e mês. Clique em **Consultar** para aplicar; **Fechar filtros** recolhe os controles. Os filtros valem para todo o painel e permanecem selecionados ao navegar. A mensagem de estado distingue alterações ainda não consultadas do recorte aplicado.
 
-Os atalhos **Saúde em dezembro**, **Polícia Penal em janeiro** e **Panorama completo** aplicam consultas prontas. O texto **Leitura do recorte** acompanha os filtros e destaca a participação das três primeiras unidades e do maior mês quando os dados permitem essa comparação. Dados incompletos, saldo zero, saldo negativo e ausência de registros recebem mensagens próprias. Os percentuais descrevem o total líquido do recorte, sem inferência sobre eficiência ou causalidade.
+Durante uma consulta, a área de dados mostra uma prévia estrutural do painel e acompanha a conclusão de quatro consultas reais: indicadores, distribuição por unidade, evolução mensal e registros. Na paginação, acompanha apenas a busca de registros. O carregamento termina quando as respostas chegam, sem porcentagem estimada ou espera artificial. A tela **Metodologia** continua disponível durante a consulta.
+
+Ative **Modo apresentação** no cabeçalho para ampliar a área de conteúdo e ocultar o menu lateral. As quatro telas, os filtros e a navegação do rodapé continuam disponíveis. Nesse modo, o ranking mostra até **cinco unidades**; **Sair da apresentação** restaura o modo habitual, com até dez. A exportação sempre inclui o ranking completo do recorte.
+
+As mudanças de tela e as barras dos gráficos têm transições; os números aparecem no valor final. A preferência do sistema por movimento reduzido é respeitada. Fontes, ícones, animações e gráficos funcionam sem internet.
+
+Os atalhos **Saúde em dezembro**, **Polícia Penal em janeiro** e **Panorama completo**, dentro dos filtros, aplicam consultas prontas. Os **Destaques do recorte**, na Visão geral, acompanham os filtros e mostram a participação das três primeiras unidades e do maior mês quando os dados permitem essa comparação. Dados incompletos, saldo zero, saldo negativo e ausência de registros recebem mensagens próprias. Os percentuais descrevem o total líquido do recorte, sem inferência sobre eficiência ou causalidade.
 
 Clique em uma unidade do ranking para explorá-la, mantendo o mês já consultado. Os filtros aplicados podem ser removidos individualmente pelo **×**. No gráfico mensal, passe o mouse ou navegue pelo teclado para ver o valor exato e a quantidade de registros; **Esc** fecha o detalhe. A tabela mensal oferece os mesmos valores para consulta e acessibilidade.
 
 1. Abra o painel com **Todas as unidades / Todos os meses**: total líquido **R$ 10.337.098.858,62**, **505.950 registros**, **117 unidades gestoras** e **9.886 registros negativos**.
-2. Veja o ranking: Fundo Estadual de Saúde, Fundo Financeiro e Secretaria de Estado da Educação lideram o recorte.
-3. Escolha uma unidade gestora e clique em **Consultar**. Os indicadores, os dois gráficos e a tabela passam a mostrar esse filtro.
+2. Avance para **Distribuição** e veja o ranking: Fundo Estadual de Saúde, Fundo Financeiro e Secretaria de Estado da Educação lideram o recorte.
+3. Use **Abrir filtros**, escolha uma unidade gestora e clique em **Consultar**. Os indicadores, os dois gráficos e a tabela passam a mostrar esse filtro, em suas respectivas telas.
 4. Escolha um mês e consulte novamente. O gráfico mensal mostra apenas esse mês. Volte a **Todos os meses** para comparar o calendário.
-5. Confira o nome do CSV e a linha de origem de um registro. Baixe o ranking, a série mensal ou os registros filtrados. As exportações correspondem aos filtros aplicados, e a de registros inclui todas as linhas do recorte, não apenas a página visível.
-6. Use **Limpar** ou **Panorama completo** para retornar ao panorama. Para demonstrar ausência de dados, use o atalho **Polícia Penal em janeiro** ou escolha `460113 · POLÍCIA PENAL DO ESPIRITO SANTO` e `Janeiro`; essa combinação foi conferida no banco e na interface e não tem registros na base recebida. Uma soma zero com registros não é ausência de dados.
+5. Na tela **Registros**, confira o nome do CSV e a linha de origem de um registro. Baixe os registros filtrados ou volte a **Distribuição** para exportar o ranking e a série mensal. As exportações correspondem aos filtros aplicados, e a de registros inclui todas as linhas do recorte, não apenas a página visível.
+6. Use **Limpar** ou **Panorama completo** para restaurar o recorte completo, com todas as unidades e meses. Para demonstrar ausência de dados, use o atalho **Polícia Penal em janeiro** ou escolha `460113 · POLÍCIA PENAL DO ESPIRITO SANTO` e `Janeiro`; essa combinação foi conferida no banco e na interface e não tem registros na base recebida. Uma soma zero com registros não é ausência de dados.
 
 As duas perguntas investigadas são **quais unidades gestoras concentram a soma líquida de ValorPago no recorte** e **como essa soma varia entre os meses de 2024**. O painel oferece tabela de origem e exportações para tornar os resultados verificáveis.
 
-A navegação lateral leva ao resumo, às análises, aos registros e à metodologia. Os destaques mostram a unidade com maior total e o mês com maior soma líquida no recorte aplicado. Ao alterar um filtro, a mensagem pede que você clique em **Consultar**; os dados e as exportações mantêm o recorte anterior até a consulta terminar. No celular, deslize o gráfico mensal para ver os demais meses ou abra **Ver valores mensais**. As barras também podem receber foco pelo teclado, com descrição acessível dos valores.
+Os destaques da **Visão geral** mostram a unidade com maior total e o mês com maior soma líquida no recorte aplicado; seus links abrem **Distribuição**. Nessa tela, use **Ver valores mensais** para consultar os números em tabela. As barras também podem receber foco pelo teclado, com descrição acessível dos valores. Em **Registros**, os botões de paginação da tabela percorrem as linhas; os controles do rodapé percorrem as quatro telas.
 
 ## Dados e reprodução
 
@@ -114,7 +136,7 @@ O relatório inclui um exercício de intervalo de confiança de 95% para a propo
 Navegador ← HTML/CSS/JavaScript ← app.py / API local ← SQLite
 ```
 
-Escolha técnica: **Python e sua biblioteca padrão**, com SQLite e uma interface web de uma tela. A proposta aceita outra tecnologia web mediante justificativa; esta opção elimina a instalação de pacotes externos e permite executar a demonstração offline. Os gráficos usam elementos HTML e SVG gerados pela própria interface, sem serviços ou arquivos externos.
+Escolha técnica: **Python e sua biblioteca padrão**, com SQLite e uma interface web com quatro telas. O navegador alterna a tela ativa no mesmo documento, mantendo filtros e resultados em memória; essa navegação não recarrega a página nem consulta novamente a API. A proposta aceita outra tecnologia web mediante justificativa; esta opção elimina a instalação de pacotes externos e permite executar a demonstração offline. Os gráficos usam elementos HTML e SVG gerados pela própria interface, sem serviços ou arquivos externos.
 
 O servidor é `ThreadingHTTPServer`. Cada consulta abre uma conexão SQLite somente leitura e a fecha ao finalizar. Os filtros usam parâmetros SQL; os valores monetários continuam inteiros em centavos nas consultas. A interface carrega os resultados de consulta em paralelo, indica carregamento, trata falhas e permite tentar novamente. A tabela exibe 20 registros por página, com ordem estável de data e ID local decrescentes.
 
@@ -156,12 +178,12 @@ A revisão humana pelos quatro integrantes, a confirmação dos papéis proposto
 - Conferir nomes, RMs e turma no relatório, na apresentação e no roteiro final.
 - Revisar e assumir as responsabilidades propostas; a tabela não é um registro de trabalho já realizado.
 - Ensaiar para 11 minutos, reservando 1 minuto de margem para alternar telas. Incluir resultado geral, Saúde em dezembro, rastreabilidade, exportação e Polícia Penal em janeiro sem registros.
-- Levar o ZIP extraído, os slides em PDF e a captura de contingência; testar a aplicação no computador da apresentação.
-- Conceder acesso à banca ao repositório e aos materiais vinculados ou definir acesso público. A verificação sem login de 04/10/2026 retornou 404 na API do GitHub, enquanto o acesso autenticado funcionou; o acesso da banca ainda não está confirmado. Os links já estão preenchidos, mas isso não comprova que a banca possa abri-los nem que a entrega foi enviada.
-- Entregar PDF e links no canal indicado em aula até **04/10/2026 às 23h59**; apresentação da turma 2ESPH em **06/10/2026**. Todos os integrantes devem comparecer, conforme orientação da atividade.
+- Levar o ZIP extraído e os slides em PDF como apoio; testar a aplicação no computador da apresentação.
+- Conferir se os links do repositório e dos materiais abrem no equipamento da banca. O repositório foi confirmado como público em 05/10/2026; isso não comprova envio pelo canal da disciplina. O dashboard é executado localmente.
+- O enunciado informa entrega do PDF e links até **04/10/2026 às 23h59** e apresentação da turma 2ESPH em **06/10/2026**. Este repositório não comprova a submissão. Todos devem conhecer a proposta e estar preparados para responder sobre sua contribuição e as decisões do grupo. Recomenda-se que os quatro participem da apresentação; o texto não fixa tempo individual mínimo de fala.
 
 ## Limites e próximos passos
 
-Esta versão tem uma tela, um ano e uma base estática. Não oferece autenticação, comparação com 2025, atualização automática, busca por favorecido ou detecção de irregularidades. Não foi testada para acesso público ou grande quantidade de usuários simultâneos. A exportação integral de mais de 500 mil registros é maior e pode demorar; para uma demonstração rápida, filtre uma unidade ou mês antes de baixá-la.
+Esta versão tem quatro telas, um ano e uma base estática. Não oferece autenticação, comparação com 2025, atualização automática, busca por favorecido ou detecção de irregularidades. Não foi testada para acesso público ou grande quantidade de usuários simultâneos. A exportação integral de mais de 500 mil registros é maior e pode demorar; para uma demonstração rápida, filtre uma unidade ou mês antes de baixá-la.
 
 Evolução proposta: importar novas cargas com verificação de cobertura, ampliar os filtros, validar a experiência com usuários, medir desempenho e preparar hospedagem adequada. A escolha de manter o recorte pequeno favorece uma demonstração funcional e auditável.

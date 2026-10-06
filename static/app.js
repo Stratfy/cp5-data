@@ -7,7 +7,13 @@ const percent = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFracti
 const hasMoney = (cents) => typeof cents === "number" && Number.isFinite(cents);
 const formatMoney = (cents) => hasMoney(cents) ? money.format(cents / 100) : "Não informado";
 const formatDate = (date) => date ? date.split("-").reverse().join("/") : "—";
-const state = { filters: { mes: "", unidade: "" }, page: 1, pages: 1, controller: null, ready: false, failed: false, busy: false };
+const state = { filters: { mes: "", unidade: "" }, page: 1, pages: 1, controller: null, ready: false, failed: false, busy: false, screen: "panorama", loadingKind: "initial", completedSteps: new Set() };
+const screens = [
+  { id: "panorama", title: "Visão geral", description: "Os principais números dos pagamentos registrados na base da atividade." },
+  { id: "analises", title: "Distribuição", description: "Compare unidades gestoras e acompanhe os valores ao longo dos meses." },
+  { id: "registros-secao", title: "Registros", description: "Confira os valores, os documentos e a origem de cada linha do recorte." },
+  { id: "metodologia", title: "Metodologia", description: "Entenda os critérios, as fontes e os limites da análise." },
+];
 let dismissActiveTooltip = null;
 
 function node(tag, text, className) {
@@ -23,6 +29,11 @@ function query(extra = {}) {
   }
   return parameters.toString();
 }
+function filterLabels() {
+  const month = [...$("mes").options].find((option) => option.value === state.filters.mes)?.textContent || "Todos os meses";
+  const unit = state.filters.unidade ? [...$("unidade").options].find((option) => option.value === state.filters.unidade)?.textContent || "Unidade selecionada" : "Todas as unidades";
+  return { month, unit };
+}
 async function request(endpoint, extra = {}) {
   const response = await fetch(`${endpoint}?${query(extra)}`, { signal: state.controller.signal });
   const data = await response.json();
@@ -31,14 +42,54 @@ async function request(endpoint, extra = {}) {
 }
 function busy(value) {
   state.busy = value;
+  document.body.dataset.loading = String(value);
   document.dispatchEvent(new CustomEvent("pagamentos:loading", { detail: { active: value } }));
-  $("resultados").setAttribute("aria-busy", String(value));
+  $("modo-apresentacao").disabled = value;
   if (value) consultationStatus(state.ready ? "Consultando o recorte…" : "Preparando os dados de 2024…", "loading");
   for (const id of ["aplicar", "limpar", "mes", "unidade", "exemplo-panorama"]) $(id).disabled = value || !state.ready;
   for (const id of ["exemplo-saude", "exemplo-penal"]) $(id).disabled = value || !state.ready || !$(id).dataset.unit;
   document.querySelectorAll(".ranking-row, .context-chip.removable").forEach((button) => { button.disabled = value || !state.ready || button.dataset.unavailable === "true"; });
   $("anterior").disabled = value || state.page <= 1;
   $("proxima").disabled = value || state.page >= state.pages;
+  updateLoadingVisibility();
+}
+function updateLoadingVisibility() {
+  const hasData = state.screen !== "metodologia";
+  $("data-loading").hidden = !state.busy || !hasData;
+  $("data-unavailable").hidden = !state.failed || state.busy || !hasData;
+  for (const screen of screens) {
+    const element = $(screen.id);
+    const waiting = screen.id !== "metodologia" && state.busy;
+    const unavailable = screen.id !== "metodologia" && state.failed && !state.busy;
+    element.classList.toggle("is-loading", waiting);
+    element.classList.toggle("is-unavailable", unavailable);
+    element.setAttribute("aria-busy", String(waiting));
+    element.inert = waiting || unavailable;
+  }
+}
+function startLoading(kind) {
+  state.loadingKind = kind;
+  state.completedSteps.clear();
+  const initial = kind === "initial", page = kind === "page";
+  $("loading-title").textContent = initial ? "Preparando seu painel" : page ? "Buscando os registros" : "Atualizando seu recorte";
+  $("loading-description").textContent = initial ? "Carregando as unidades gestoras e os meses disponíveis." : page ? "Localizando a página solicitada e suas referências de origem." : "Consultando os indicadores, os gráficos e os registros dos filtros aplicados.";
+  $("loading-status").textContent = initial ? "Preparando os filtros…" : page ? "Consultando a página…" : "0 de 4 consultas concluídas";
+  document.querySelectorAll("[data-load-step]").forEach((step) => {
+    step.hidden = page && step.dataset.loadStep !== "records";
+    step.dataset.state = "pending";
+    step.querySelector(".step-state").textContent = initial ? "Aguardando" : "Consultando";
+  });
+}
+async function trackedRequest(step, endpoint, extra, controller) {
+  const data = await request(endpoint, extra);
+  if (state.controller === controller && !controller.signal.aborted) {
+    state.completedSteps.add(step);
+    const item = document.querySelector(`[data-load-step="${step}"]`);
+    item.dataset.state = "done";
+    item.querySelector(".step-state").textContent = "Concluído";
+    $("loading-status").textContent = state.loadingKind === "page" ? "Página carregada" : `${state.completedSteps.size} de 4 consultas concluídas`;
+  }
+  return data;
 }
 function consultationStatus(text, status) {
   const element = $("consulta-status");
@@ -94,14 +145,19 @@ function renderSummary(data) {
   $("ajustes-valor").textContent = `${formatMoney(data.ajustes_centavos)} incorporados ao total`;
   $("alerta").hidden = data.registros !== 0;
   $("alerta").textContent = "Nenhum registro encontrado com estes filtros. Escolha outra combinação ou use Limpar.";
-  const month = [...$("mes").options].find((option) => option.value === state.filters.mes)?.textContent || "Todos os meses";
-  const unit = state.filters.unidade ? [...$("unidade").options].find((option) => option.value === state.filters.unidade)?.textContent || "Unidade selecionada" : "Todas as unidades";
+  const { month, unit } = filterLabels();
   $("recorte").textContent = `2024 · ${month} · ${unit} · ${integer.format(data.registros)} registro(s)`;
   const applied = $("filtros-aplicados");
-  if (applied) applied.replaceChildren(node("span", "2024", "context-chip"), filterChip(month, "mes"), filterChip(unit, "unidade", "unit-chip"));
+  if (applied) {
+    const chips = [];
+    if (state.filters.mes) chips.push(filterChip(month, "mes"));
+    if (state.filters.unidade) chips.push(filterChip(unit, "unidade", "unit-chip"));
+    applied.replaceChildren(...chips);
+    applied.hidden = chips.length === 0;
+  }
   $("mensal-descricao").textContent = state.filters.mes
     ? "O filtro de mês também se aplica a este gráfico. Escolha Todos os meses para comparar o ano."
-    : "Meses de 2024, conforme a data de referência de cada registro. Meses sem linhas são identificados na tabela.";
+    : "Soma líquida por mês de referência do registro, em 2024.";
   renderDataQuality(data);
 }
 function filterChip(label, key, className = "") {
@@ -119,11 +175,16 @@ function filterChip(label, key, className = "") {
 }
 async function applyFilters(filters, focusSummary = false) {
   if (state.busy || !state.ready) return;
+  const originScreen = state.screen;
+  const originFocus = document.activeElement;
   state.filters = { ...filters };
   $("mes").value = filters.mes;
   $("unidade").value = filters.unidade;
   const loaded = await load();
-  if (loaded && focusSummary) $("panorama").focus({ preventScroll: true });
+  if (loaded && focusSummary && state.screen === originScreen &&
+      (document.activeElement === originFocus || document.activeElement === document.body)) {
+    $(state.screen).focus({ preventScroll: true });
+  }
 }
 function unitKey(code, name) {
   return [...$("unidade").options].find((option) => {
@@ -157,10 +218,17 @@ function describeRecorte(summary, ranking, monthly, filters) {
     const share = peak.total_centavos / summary.total_centavos;
     if (share > 0 && share <= 1) readings.push(`${peak.nome} reúne ${percent.format(share)} do total líquido do recorte.`);
   }
-  return readings.length ? readings : ["Consulta pronta para conferência.", "Os registros e as exportações abaixo correspondem ao recorte aplicado."];
+  return readings.length ? readings : ["Consulta pronta para conferência.", "Os registros e as exportações correspondem ao recorte aplicado."];
 }
 function renderReading(summary, ranking, monthly) {
   $("leitura-recorte").replaceChildren(...describeRecorte(summary, ranking, monthly, state.filters).map((text, index) => node(index ? "span" : "strong", text)));
+  const leader = ranking.find((row) => hasMoney(row.total_centavos));
+  const measured = monthly.filter((row) => row.registros > 0 && hasMoney(row.total_centavos));
+  const peak = measured.length ? measured.reduce((best, row) => row.total_centavos > best.total_centavos ? row : best) : null;
+  $("overview-unit-value").textContent = leader ? formatMoney(leader.total_centavos) : summary.registros ? "Não informado" : "Sem registros";
+  $("overview-unit-name").textContent = leader ? leader.nome || "Unidade não informada" : "Não há valores disponíveis neste recorte.";
+  $("overview-month-value").textContent = peak ? formatMoney(peak.total_centavos) : summary.registros ? "Não informado" : "Sem registros";
+  $("overview-month-name").textContent = peak ? `${peak.nome} · ${integer.format(peak.registros)} registros no mês` : "Não há valores mensais disponíveis neste recorte.";
 }
 function updatePresentation() {
   const active = document.body.classList.contains("presentation-mode");
@@ -263,6 +331,7 @@ function monthlyTooltip(group, row) {
   group.addEventListener("keydown", (event) => { if (event.key === "Escape") { dismissed = true; hideTooltip(); } });
 }
 function renderMonthly(rows) {
+  state.monthlyRows = rows;
   hideTooltip();
   const container = $("mensal");
   const table = $("mensal-tabela");
@@ -298,7 +367,8 @@ function renderMonthly(rows) {
   }
   const peak = measured.reduce((highest, row) => row.total_centavos > highest.total_centavos ? row : highest);
   insight("mensal-destaque", state.filters.mes ? `Total de ${peak.nome.toLowerCase()}` : `Maior total mensal · ${peak.nome}`, formatMoney(peak.total_centavos), `${integer.format(peak.registros)} registros no mês · soma líquida${peak.registros_sem_valor ? ` · ${integer.format(peak.registros_sem_valor)} sem ValorPago` : ""}`);
-  const width = 620, height = 320, left = 120, right = 20, top = 35, bottom = 272;
+  const width = 620, height = 250, left = 105, right = 20;
+  const top = 35, bottom = height - 50;
   const values = rows.filter((row) => hasMoney(row.total_centavos)).map((row) => row.total_centavos);
   let high = Math.max(0, ...values), low = Math.min(0, ...values);
   if (high === 0 && low === 0) high = 100;
@@ -322,14 +392,15 @@ function renderMonthly(rows) {
   svg.append(svgNode("line", { x1: left, x2: width - right, y1: baseline, y2: baseline, stroke: "var(--muted)" }));
   const step = (width - left - right) / rows.length;
   rows.forEach((row, index) => {
-    const x = left + index * step + step * 0.21;
+    const barWidth = Math.min(step * 0.58, 96);
+    const x = left + index * step + (step - barWidth) / 2;
     const isPeak = !state.filters.mes && row === peak;
     const label = `${row.nome}: ${formatMoney(row.total_centavos)} · ${integer.format(row.registros)} registro(s)${row.registros === 0 ? " · sem registros" : ""}${row.registros_sem_valor ? ` · ${integer.format(row.registros_sem_valor)} sem ValorPago válido` : ""}`;
     const group = svgNode("g", { class: "bar-group", tabindex: "0", role: "img", "aria-label": label });
     group.append(svgNode("rect", { x: left + index * step, y: top, width: step, height: bottom - top, class: "bar-hit", fill: "transparent", "pointer-events": "all" }));
     monthlyTooltip(group, row);
     if (!hasMoney(row.total_centavos)) {
-      group.append(svgNode("line", { x1: x, x2: x + step * 0.58, y1: baseline, y2: baseline, class: "unavailable-marker", stroke: "var(--muted)", "stroke-width": 2, "stroke-dasharray": "3 2" }));
+      group.append(svgNode("line", { x1: x, x2: x + barWidth, y1: baseline, y2: baseline, class: "unavailable-marker", stroke: "var(--muted)", "stroke-width": 2, "stroke-dasharray": "3 2" }));
       group.append(svgNode("text", { x: left + index * step + step / 2, y: Math.max(top, baseline - 8), "text-anchor": "middle", class: "unavailable-label" }, "—"));
       svg.append(group);
       svg.append(svgNode("text", { x: left + index * step + step / 2, y: bottom + 25, "text-anchor": "middle", fill: "var(--muted)", "font-size": 16 }, row.nome.slice(0, 3)));
@@ -338,7 +409,7 @@ function renderMonthly(rows) {
     const y = scale(row.total_centavos);
     const barHeight = Math.abs(y - baseline);
     const bar = svgNode("rect", { x, y: row.total_centavos >= 0 ? y : baseline,
-      width: step * 0.58, height: Math.max(barHeight, 1), rx: Math.min(3, barHeight / 2),
+      width: barWidth, height: Math.max(barHeight, 1), rx: Math.min(1, barHeight / 2),
       class: `month-bar${isPeak ? " is-peak" : ""}${row.total_centavos < 0 ? " is-negative" : ""}${row.registros === 0 ? " is-missing" : ""}`,
       fill: row.total_centavos < 0 ? "var(--negative)" : row.registros === 0 ? "var(--line)" : isPeak ? "var(--accent)" : "var(--navy-soft)" });
     bar.style.setProperty("--bar-origin", row.total_centavos < 0 ? "center top" : "center bottom");
@@ -380,38 +451,53 @@ async function load(page = 1, full = true) {
   state.controller?.abort();
   const current = new AbortController();
   state.controller = current;
+  startLoading(full ? "query" : "page");
+  if (full) {
+    const { month, unit } = filterLabels();
+    $("recorte").textContent = `2024 · ${month} · ${unit}`;
+    $("alerta").hidden = true;
+    $("qualidade-dados").hidden = true;
+  }
   busy(true);
   $("erro").hidden = true;
   try {
     if (full) {
       const [summary, ranking, monthly, records] = await Promise.all([
-        request("/api/resumo"), request("/api/ranking"), request("/api/mensal"), request("/api/registros", { pagina: page })]);
+        trackedRequest("summary", "/api/resumo", {}, current), trackedRequest("ranking", "/api/ranking", {}, current),
+        trackedRequest("monthly", "/api/mensal", {}, current), trackedRequest("records", "/api/registros", { pagina: page }, current)]);
+      if (state.controller !== current) return false;
       renderSummary(summary); renderRanking(ranking.linhas); renderMonthly(monthly.linhas); renderRecords(records); updateDownloads();
       renderReading(summary, ranking.linhas, monthly.linhas); updatePresentation();
-    } else renderRecords(await request("/api/registros", { pagina: page }));
-    $("resultados").hidden = false;
+    } else {
+      const records = await trackedRequest("records", "/api/registros", { pagina: page }, current);
+      if (state.controller !== current) return false;
+      renderRecords(records);
+      document.querySelector(".records-panel .table-scroll").scrollTop = 0;
+    }
     state.failed = false;
     updateConsultationStatus();
-    updateNavigation();
+    busy(false);
     document.dispatchEvent(new CustomEvent("pagamentos:updated", { detail: { full } }));
     return true;
   } catch (error) {
     if (error.name !== "AbortError") {
+      current.abort();
       state.failed = true;
       $("erro-texto").textContent = error.message || "Não foi possível acessar o servidor local. Confira se a janela da aplicação continua aberta.";
       $("erro").hidden = false;
       $("alerta").hidden = true;
       if ($("qualidade-dados")) $("qualidade-dados").hidden = true;
-      $("resultados").hidden = true;
       $("recorte").textContent = "Consulta não concluída. Tente novamente.";
       consultationStatus("Consulta não concluída", "error");
     }
     return false;
-  } finally { if (state.controller === current) busy(false); }
+  } finally { if (state.controller === current && state.busy) busy(false); }
 }
 async function initialize() {
   state.controller?.abort();
   state.controller = new AbortController();
+  startLoading("initial");
+  $("erro").hidden = true;
   busy(true);
   try {
     const options = await request("/api/opcoes");
@@ -429,7 +515,7 @@ async function initialize() {
   } catch (error) {
     state.failed = true;
     $("erro-texto").textContent = error.message || "Não foi possível carregar a base. Confira se a aplicação continua aberta.";
-    $("erro").hidden = false; $("resultados").hidden = true;
+    $("erro").hidden = false;
     if ($("qualidade-dados")) $("qualidade-dados").hidden = true;
     $("recorte").textContent = "Base indisponível.";
     consultationStatus("Base indisponível", "error");
@@ -443,48 +529,84 @@ $("proxima").addEventListener("click", () => load(state.page + 1, false));
 $("tentar").addEventListener("click", () => state.ready ? load() : initialize());
 $("modo-apresentacao").addEventListener("click", () => {
   document.body.classList.toggle("presentation-mode");
-  document.body.classList.remove("filters-expanded");
-  $("abrir-filtros").setAttribute("aria-expanded", "false");
-  $("abrir-filtros").textContent = "Ajustar filtros";
+  setFiltersExpanded(false);
   updatePresentation();
+  if (state.monthlyRows && !state.busy) renderMonthly(state.monthlyRows);
   hideTooltip();
   document.dispatchEvent(new CustomEvent("pagamentos:presentation", { detail: { active: document.body.classList.contains("presentation-mode") } }));
-  window.scrollTo({ top: 0, behavior: "instant" });
 });
-$("abrir-filtros").addEventListener("click", () => {
-  const expanded = document.body.classList.toggle("filters-expanded");
+function setFiltersExpanded(expanded) {
+  document.body.classList.toggle("filters-expanded", expanded);
+  $("filter-controls").hidden = !expanded;
   $("abrir-filtros").setAttribute("aria-expanded", String(expanded));
-  $("abrir-filtros").textContent = expanded ? "Recolher filtros" : "Ajustar filtros";
-  if (expanded) $("unidade").focus();
+  $("abrir-filtros").replaceChildren(document.createTextNode(expanded ? "Fechar filtros " : "Abrir filtros "), node("span", expanded ? "−" : "+"));
+  $("abrir-filtros").lastElementChild.setAttribute("aria-hidden", "true");
+}
+$("abrir-filtros").addEventListener("click", () => {
+  setFiltersExpanded($("filter-controls").hidden);
 });
 $("exemplo-panorama").addEventListener("click", () => $("limpar").click());
 for (const [id, month] of [["exemplo-saude", "12"], ["exemplo-penal", "1"]]) $(id).addEventListener("click", () => {
   applyFilters({ mes: month, unidade: $(id).dataset.unit });
 });
 for (const id of ["mes", "unidade"]) $(id).addEventListener("change", updateConsultationStatus);
-function updateNavigation() {
-  const links = [...document.querySelectorAll(".sidebar nav a")];
-  let active = links[0];
-  for (const link of links) {
-    const section = document.querySelector(link.getAttribute("href"));
-    if (section && section.getBoundingClientRect().top <= 125) active = link;
-  }
-  for (const link of links) {
-    if (link === active) link.setAttribute("aria-current", "location");
+function showScreen(id, { historyMode = "push", focus = true } = {}) {
+  const index = screens.findIndex((screen) => screen.id === id);
+  if (index < 0) return;
+  const previous = state.screen;
+  const previousIndex = screens.findIndex((screen) => screen.id === previous);
+  state.screen = id;
+  document.body.dataset.screen = id;
+  screens.forEach((screen) => { $(screen.id).hidden = screen.id !== id; });
+  document.querySelectorAll(".sidebar nav a").forEach((link) => {
+    if (link.getAttribute("href") === `#${id}`) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
-  }
+  });
+  $("screen-title").textContent = screens[index].title;
+  $("screen-description").textContent = screens[index].description;
+  $("screen-number").textContent = String(index + 1).padStart(2, "0");
+  $("navigation-position").textContent = `Tela ${index + 1} de ${screens.length}`;
+  $("navigation-current").textContent = screens[index].title;
+  $("tela-anterior").disabled = index === 0;
+  $("tela-anterior").setAttribute("aria-label", index ? `Tela anterior: ${screens[index - 1].title}` : "Tela anterior");
+  $("tela-proxima").disabled = index === screens.length - 1;
+  $("next-screen-label").textContent = index < screens.length - 1 ? `Próxima: ${screens[index + 1].title}` : "Última tela";
+  if (historyMode === "replace") history.replaceState(null, "", `#${id}`);
+  else if (historyMode === "push" && location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
+  if (previous !== id) $(id).scrollTop = 0;
+  hideTooltip();
+  updateLoadingVisibility();
+  if (focus) $("screen-title").focus({ preventScroll: true });
+  document.dispatchEvent(new CustomEvent("pagamentos:screen", { detail: { id, previous, direction: index >= previousIndex ? 1 : -1 } }));
 }
-let navigationQueued = false;
-window.addEventListener("scroll", () => {
-  if (navigationQueued) return;
-  navigationQueued = true;
-  requestAnimationFrame(() => { navigationQueued = false; updateNavigation(); });
-}, { passive: true });
-window.addEventListener("resize", updateNavigation);
+function adjacentScreen(direction) {
+  const next = screens[screens.findIndex((screen) => screen.id === state.screen) + direction];
+  if (next) showScreen(next.id);
+}
+document.addEventListener("click", (event) => {
+  const link = event.target.closest?.('a[href^="#"]');
+  if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+  const id = link.getAttribute("href").slice(1);
+  if (screens.some((screen) => screen.id === id)) { event.preventDefault(); showScreen(id); }
+  else if (id === "conteudo") { event.preventDefault(); $("screen-title").focus({ preventScroll: true }); }
+});
+$("tela-anterior").addEventListener("click", () => adjacentScreen(-1));
+$("tela-proxima").addEventListener("click", () => adjacentScreen(1));
+window.addEventListener("hashchange", () => {
+  const id = location.hash.slice(1);
+  showScreen(screens.some((screen) => screen.id === id) ? id : "panorama", { historyMode: "none" });
+});
+document.addEventListener("keydown", (event) => {
+  if (!event.altKey || event.ctrlKey || event.metaKey || !/^[1-4]$/.test(event.key)) return;
+  if (event.target.closest?.("input, select, textarea, [contenteditable='true']")) return;
+  event.preventDefault();
+  showScreen(screens[Number(event.key) - 1].id);
+});
 window.addEventListener("resize", hideTooltip);
 window.addEventListener("scroll", hideTooltip, { passive: true, capture: true });
 document.addEventListener("pagamentos:loading", (event) => { if (event.detail.active) hideTooltip(); });
 document.addEventListener("keydown", (event) => { if (event.key === "Escape") dismissActiveTooltip?.(); });
 document.addEventListener("pointerdown", (event) => { if (!event.target.closest?.(".bar-group")) hideTooltip(); });
-updateNavigation();
+const initialScreen = location.hash.slice(1);
+showScreen(screens.some((screen) => screen.id === initialScreen) ? initialScreen : "panorama", { historyMode: "replace", focus: false });
 initialize();
